@@ -36,13 +36,14 @@ class FlashcardApp extends StatelessWidget {
             centerTitle: true,
             title: const Text('FlashCard'),
           ),
-          body: SingleChildScrollView(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Container(
+          body: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
-                padding: const EdgeInsets.all(16.0),
-                child: const QuizScreenBody(),
+                child:const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: QuizScreenBody(),
+                )
               ),
             ),
           ),
