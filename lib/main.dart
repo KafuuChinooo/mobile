@@ -1,7 +1,7 @@
 import 'dart:collection';
 
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flash_card/quiz.dart';
+import 'package:flash_card/widget/quiz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_flip_card/controllers/flip_card_controllers.dart';
 import 'package:flutter_flip_card/flipcard/flip_card.dart';
