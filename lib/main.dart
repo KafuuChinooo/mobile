@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_flip_card/controllers/flip_card_controllers.dart';
 import 'package:flutter_flip_card/flipcard/flip_card.dart';
 import 'package:flutter_flip_card/modal/flip_side.dart';
+import 'package:flash_card/Helper/router.dart';
 
 void main() => runApp(const FlashcardApp());
 
@@ -31,23 +32,8 @@ class FlashcardApp extends StatelessWidget {
         ),
         themeMode: ThemeMode.system,
         title: 'FlashCard',
-        home: Scaffold(
-          appBar: AppBar(
-            centerTitle: true,
-            title: const Text('FlashCard'),
-          ),
-          body: SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child:const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: QuizScreenBody(),
-                )
-              ),
-            ),
-          ),
-        ),
+        initialRoute: AppRouter.account,
+        onGenerateRoute: AppRouter.generateRoute,
       ),
     );
   }
@@ -94,7 +80,6 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
   @override
   Widget build(BuildContext context) {
     return Column(
-      spacing: 8.0,
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -114,7 +99,7 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
             textColor: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
           controller: _controller,
-          animationDuration: Duration(milliseconds: 500),
+          animationDuration: const Duration(milliseconds: 500),
           // NOTE: there is a bug in the package, so rotateSide is set to bottom for both sides
           rotateSide: _showAnswer ? RotateSide.bottom : RotateSide.bottom,
           onTapFlipping: false,
@@ -149,7 +134,6 @@ class ProgressBar extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(8.0),
       child: Row(
-        spacing: 8.0,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
