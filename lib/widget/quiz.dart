@@ -12,77 +12,75 @@ class QuizQuestion {
 
 final List<QuizQuestion> quizQuestions = [
   QuizQuestion(
-    question: "Natural disaster",
+    question: "Natural disaster (n)",
     answer:
         "Thảm họa thiên nhiên",
-    category: "dart",
+    category: "Environment",
   ),
   QuizQuestion(
-    question: "Greenhouse effect",
+    question: "Greenhouse effect (n)",
     answer:
         "Hiệu ứng nhà kính",
-    category: "dart",
+    category: "Environment",
   ),
   QuizQuestion(
-    question: "Rising sea levels",
+    question: "Rising sea levels (n. phr.)",
     answer:
         "Mực nước biển dâng",
-    category: "dart",
+    category: "Environment",
   ),
   QuizQuestion(
-    question: "Habitat loss",
+    question: "Habitat loss (n)",
     answer:
         "Mất môi trường sống",
-    category: "dart",
+    category: "Environment",
   ),
-
-  // Golang Questions
   QuizQuestion(
-    question: "Climate change",
+    question: "Climate change (n)",
     answer:
         "Biến đổi khí hậu",
-    category: "golang",
+    category: "Environment",
   ),
   QuizQuestion(
-    question: "Global warming",
+    question: "Global warming (n)",
     answer:
         "Sự nóng lên toàn cầu",
-    category: "golang",
+    category: "Environment",
   ),
   QuizQuestion(
-    question: "Air pollution",
+    question: "Air pollution (n)",
     answer:
         "Ô nhiễm không khí",
-    category: "golang",
+    category: "Environment",
   ),
   QuizQuestion(
-    question: "Water contamination",
+    question: "Water contamination (n)",
     answer:
         "Ô nhiễm nguồn nước",
-    category: "golang",
+    category: "Environment",
   ),
   QuizQuestion(
-    question: "Deforestation",
+    question: "Deforestation (n)",
     answer:
         "Nạn phá rừng",
-    category: "golang",
+    category: "Environment",
   ),
   QuizQuestion(
-    question: "Overfishing",
+    question: "Overfishing (n)",
     answer:
         "Đánh bắt cá quá mức",
-    category: "golang",
+    category: "Environment",
   ),
   QuizQuestion(
-    question: "Desertification",
+    question: "Desertification (n)",
     answer:
         "Sa mạc hóa",
-    category: "golang",
+    category: "Environment",
   ),
   QuizQuestion(
-    question: "Ozone depletion",
+    question: "Ozone depletion (n)",
     answer:
         "Sự suy giảm tầng ozone",
-    category: "golang",
+    category: "Environment",
   ),
 ];
