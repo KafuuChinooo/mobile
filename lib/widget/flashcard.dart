@@ -191,7 +191,7 @@ class CardSection extends StatelessWidget {
             color: Colors.black.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 15,
-            offset: const Offset(0, 5), // changes position of shadow
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -238,15 +238,15 @@ class CardControllerSection extends StatelessWidget {
               elevation: 0),
           child: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF7233FE), size: 20),
         ),
-        const SizedBox(width: 24),
+        const SizedBox(width: 20),
         ElevatedButton(
           onPressed: onToggleAnswerVisibility,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF7233FE),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 16),
           ),
-          child: Text(showAnswer ? 'Hide Answer' : 'Show Answer', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          child: Text(showAnswer ? 'Hide Answer' : 'Show Answer', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
         ),
         const SizedBox(width: 24),
         ElevatedButton(
