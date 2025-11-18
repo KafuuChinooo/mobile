@@ -1,6 +1,6 @@
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flutter/material.dart';
 import 'package:flash_card/Helper/router.dart';
+import 'package:flutter/material.dart';
 
 void main() => runApp(const FlashcardApp());
 
@@ -26,7 +26,7 @@ class FlashcardApp extends StatelessWidget {
         ),
         themeMode: ThemeMode.system,
         title: 'FlashCard',
-        initialRoute: AppRouter.flashcard, // Thay đổi ở đây
+        initialRoute: AppRouter.home,
         onGenerateRoute: AppRouter.generateRoute,
       ),
     );

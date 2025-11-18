@@ -1,5 +1,7 @@
 import 'dart:collection';
 
+import 'package:flash_card/widget/app_bottom_nav.dart';
+import 'package:flash_card/widget/app_scaffold.dart';
 import 'package:flash_card/widget/quiz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_flip_card/controllers/flip_card_controllers.dart';
@@ -13,27 +15,11 @@ class FlashcardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          },
-        ),
-        titleTextStyle: const TextStyle(
-            color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
-        title: const Text(
-          'Flashcard',
-        ),
-      ),
-      body: const Padding(
+    return const AppScaffold(
+      title: 'Flashcard',
+      showBackButton: true,
+      currentItem: BottomNavItem.flashcard,
+      body: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.0),
         child: QuizScreenBody(),
       ),
@@ -188,7 +174,7 @@ class CardSection extends StatelessWidget {
         color: color, // Sử dụng màu được truyền vào
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 15,
             offset: const Offset(0, 5),
