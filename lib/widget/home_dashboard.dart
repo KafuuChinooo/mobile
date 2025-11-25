@@ -3,17 +3,26 @@ import 'package:flash_card/widget/app_scaffold.dart';
 import 'package:flutter/material.dart';
 
 class HomeDashboardScreen extends StatelessWidget {
-  const HomeDashboardScreen({super.key});
+  final bool showBottomNav;
+  final ValueChanged<BottomNavItem>? onNavItemSelected;
+
+  const HomeDashboardScreen({
+    super.key,
+    this.showBottomNav = true,
+    this.onNavItemSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     const accent = Color(0xFF7233FE);
     const secondaryAccent = Color(0xFFAA80FF);
 
-    return const AppScaffold(
+    return AppScaffold(
       title: 'Dashboard',
       showAppBar: false,
       currentItem: BottomNavItem.home,
+      showBottomNav: showBottomNav,
+      onNavItemSelected: onNavItemSelected,
       body: SingleChildScrollView(
         padding: EdgeInsets.only(bottom: 24.0),
         child: Column(

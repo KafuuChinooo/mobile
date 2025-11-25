@@ -5,11 +5,21 @@ enum BottomNavItem { home, flashcard, decks, account }
 
 class AppBottomNavigationBar extends StatelessWidget {
   final BottomNavItem currentItem;
+  final ValueChanged<BottomNavItem>? onItemSelected;
 
-  const AppBottomNavigationBar({super.key, required this.currentItem});
+  const AppBottomNavigationBar({
+    super.key,
+    required this.currentItem,
+    this.onItemSelected,
+  });
 
   void _handleTap(BuildContext context, BottomNavItem target) {
     if (target == currentItem) return;
+
+    if (onItemSelected != null) {
+      onItemSelected!(target);
+      return;
+    }
 
     final routeName = _routeForItem(target);
     Navigator.pushReplacementNamed(context, routeName);

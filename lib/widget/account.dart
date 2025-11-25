@@ -3,7 +3,14 @@ import 'package:flash_card/widget/app_scaffold.dart';
 import 'package:flutter/material.dart';
 
 class AccountScreen extends StatelessWidget {
-  const AccountScreen({super.key});
+  final bool showBottomNav;
+  final ValueChanged<BottomNavItem>? onNavItemSelected;
+
+  const AccountScreen({
+    super.key,
+    this.showBottomNav = true,
+    this.onNavItemSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -12,6 +19,8 @@ class AccountScreen extends StatelessWidget {
     return AppScaffold(
       title: 'Account',
       currentItem: BottomNavItem.account,
+      showBottomNav: showBottomNav,
+      onNavItemSelected: onNavItemSelected,
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
         child: Column(

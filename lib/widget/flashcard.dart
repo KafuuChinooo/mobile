@@ -11,14 +11,25 @@ import 'package:flutter_flip_card/modal/flip_side.dart';
 // --- 1. WIDGET MÀN HÌNH CHÍNH ---
 // Widget này chứa cấu trúc cơ bản của màn hình (Scaffold, AppBar).
 class FlashcardScreen extends StatelessWidget {
-  const FlashcardScreen({super.key});
+  final bool showBottomNav;
+  final bool showBackButton;
+  final ValueChanged<BottomNavItem>? onNavItemSelected;
+
+  const FlashcardScreen({
+    super.key,
+    this.showBottomNav = true,
+    this.showBackButton = true,
+    this.onNavItemSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const AppScaffold(
+    return AppScaffold(
       title: 'Flashcard',
-      showBackButton: true,
+      showBackButton: showBackButton,
       currentItem: BottomNavItem.flashcard,
+      showBottomNav: showBottomNav,
+      onNavItemSelected: onNavItemSelected,
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.0),
         child: QuizScreenBody(),

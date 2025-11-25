@@ -6,8 +6,12 @@ class AppScaffold extends StatelessWidget {
   final String title;
   final Widget body;
   final BottomNavItem? currentItem;
+  final ValueChanged<BottomNavItem>? onNavItemSelected;
+  final bool showBottomNav;
   final bool showBackButton;
   final bool showAppBar;
+  final Widget? floatingActionButton;
+  final FloatingActionButtonLocation? floatingActionButtonLocation;
   final List<Widget>? actions;
   final Color backgroundColor;
 
@@ -16,8 +20,12 @@ class AppScaffold extends StatelessWidget {
     required this.title,
     required this.body,
     this.currentItem,
+    this.onNavItemSelected,
+    this.showBottomNav = true,
     this.showBackButton = false,
     this.showAppBar = true,
+    this.floatingActionButton,
+    this.floatingActionButtonLocation,
     this.actions,
     this.backgroundColor = Colors.white,
   });
@@ -60,9 +68,14 @@ class AppScaffold extends StatelessWidget {
       backgroundColor: backgroundColor,
       appBar: _buildAppBar(context),
       body: body,
-      bottomNavigationBar: currentItem == null
+      floatingActionButton: floatingActionButton,
+      floatingActionButtonLocation: floatingActionButtonLocation,
+      bottomNavigationBar: currentItem == null || !showBottomNav
           ? null
-          : AppBottomNavigationBar(currentItem: currentItem!),
+          : AppBottomNavigationBar(
+              currentItem: currentItem!,
+              onItemSelected: onNavItemSelected,
+            ),
     );
   }
 }
