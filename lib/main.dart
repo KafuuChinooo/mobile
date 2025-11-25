@@ -36,7 +36,7 @@ class FlashcardApp extends StatelessWidget {
         ),
         themeMode: ThemeMode.system,
         title: 'FlashCard',
-        initialRoute: AppRouter.home,
+        initialRoute: AppRouter.login,
         onGenerateRoute: AppRouter.generateRoute,
       ),
     );

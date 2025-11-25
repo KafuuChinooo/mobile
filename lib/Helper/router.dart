@@ -1,6 +1,7 @@
 import 'package:flash_card/widget/app_bottom_nav.dart';
-import 'package:flash_card/widget/add_deck_screen.dart';
-import 'package:flash_card/widget/navigation_shell.dart';
+import 'package:flash_card/widget/auth/auth_screens.dart';
+import 'package:flash_card/widget/screens/add_deck_screen.dart';
+import 'package:flash_card/widget/screens/navigation_shell.dart';
 import 'package:flutter/material.dart';
 
 class AppRouter {
@@ -9,11 +10,17 @@ class AppRouter {
   static const String flashcard = '/flashcard';
   static const String decks = '/decks';
   static const String addDeck = '/addDeck';
+  static const String login = '/login';
+  static const String signUp = '/signUp';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case addDeck:
         return MaterialPageRoute(builder: (_) => const AddDeckScreen());
+      case login:
+        return MaterialPageRoute(builder: (_) => const LoginScreen());
+      case signUp:
+        return MaterialPageRoute(builder: (_) => const SignUpScreen());
       default:
         break;
     }

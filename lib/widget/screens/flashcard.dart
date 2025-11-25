@@ -2,7 +2,7 @@ import 'dart:collection';
 
 import 'package:flash_card/widget/app_bottom_nav.dart';
 import 'package:flash_card/widget/app_scaffold.dart';
-import 'package:flash_card/widget/quiz.dart';
+import 'package:flash_card/widget/screens/quiz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_flip_card/controllers/flip_card_controllers.dart';
 import 'package:flutter_flip_card/flipcard/flip_card.dart';

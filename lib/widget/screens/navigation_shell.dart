@@ -1,8 +1,8 @@
-import 'package:flash_card/widget/account.dart';
 import 'package:flash_card/widget/app_bottom_nav.dart';
-import 'package:flash_card/widget/decks_screen.dart';
-import 'package:flash_card/widget/flashcard.dart';
-import 'package:flash_card/widget/home_dashboard.dart';
+import 'package:flash_card/widget/screens/account.dart';
+import 'package:flash_card/widget/screens/decks_screen.dart';
+import 'package:flash_card/widget/screens/flashcard.dart';
+import 'package:flash_card/widget/screens/home_dashboard.dart';
 import 'package:flutter/material.dart';
 
 class NavigationShell extends StatefulWidget {
