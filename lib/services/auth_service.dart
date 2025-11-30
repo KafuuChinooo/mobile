@@ -6,6 +6,10 @@ class AuthService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  User? get currentUser => _auth.currentUser;
+
   Future<AuthResult> signIn({
     required String email,
     required String password,
@@ -16,7 +20,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_mapError(e));
     } catch (e) {
-      return AuthResult.failure('Sign in failed, try again');
+      return AuthResult.failure('Đăng nhập thất bại, vui lòng thử lại');
     }
   }
 
@@ -33,7 +37,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_mapError(e));
     } catch (e) {
-      return AuthResult.failure('Sign up failed, try again');
+      return AuthResult.failure('Đăng ký thất bại, vui lòng thử lại');
     }
   }
 
@@ -44,7 +48,18 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_mapError(e));
     } catch (e) {
-      return AuthResult.failure('Anonymous sign-in failed');
+      return AuthResult.failure('Đăng nhập ẩn danh thất bại');
+    }
+  }
+
+  Future<AuthResult> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      return const AuthResult.success(message: 'Email đặt lại mật khẩu đã được gửi');
+    } on FirebaseAuthException catch (e) {
+      return AuthResult.failure(_mapError(e));
+    } catch (e) {
+      return AuthResult.failure('Gửi email thất bại');
     }
   }
 
@@ -53,17 +68,17 @@ class AuthService {
   String _mapError(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
-        return 'User not found';
       case 'wrong-password':
-        return 'Wrong password';
+      case 'invalid-credential':
+        return 'Email hoặc password sai, hãy thử lại';
       case 'email-already-in-use':
-        return 'Email already in use';
+        return 'Email đã được sử dụng';
       case 'invalid-email':
-        return 'Invalid email';
+        return 'Vui lòng nhập email hợp lệ';
       case 'weak-password':
-        return 'Password too weak';
+        return 'Mật khẩu quá yếu';
       default:
-        return e.message ?? 'Authentication error';
+        return e.message ?? 'Lỗi xác thực';
     }
   }
 }
@@ -77,6 +92,6 @@ class AuthResult {
     this.message,
   });
 
-  const AuthResult.success() : this(ok: true);
+  const AuthResult.success({String? message}) : this(ok: true, message: message);
   const AuthResult.failure(String message) : this(ok: false, message: message);
 }

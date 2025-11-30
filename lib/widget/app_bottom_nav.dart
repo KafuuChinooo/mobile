@@ -1,7 +1,7 @@
 import 'package:flash_card/Helper/router.dart';
 import 'package:flutter/material.dart';
 
-enum BottomNavItem { home, flashcard, decks, account }
+enum BottomNavItem { home, decks, account }
 
 class AppBottomNavigationBar extends StatelessWidget {
   final BottomNavItem currentItem;
@@ -29,8 +29,6 @@ class AppBottomNavigationBar extends StatelessWidget {
     switch (item) {
       case BottomNavItem.home:
         return AppRouter.home;
-      case BottomNavItem.flashcard:
-        return AppRouter.flashcard;
       case BottomNavItem.decks:
         return AppRouter.decks;
       case BottomNavItem.account:
@@ -59,10 +57,6 @@ class AppBottomNavigationBar extends StatelessWidget {
             IconButton(
               icon: Icon(Icons.home_outlined, size: 32, color: _iconColor(BottomNavItem.home)),
               onPressed: () => _handleTap(context, BottomNavItem.home),
-            ),
-            IconButton(
-              icon: Icon(Icons.add_circle_outline, size: 36, color: _iconColor(BottomNavItem.flashcard)),
-              onPressed: () => _handleTap(context, BottomNavItem.flashcard),
             ),
             IconButton(
               icon: Icon(Icons.folder_open_outlined, size: 32, color: _iconColor(BottomNavItem.decks)),

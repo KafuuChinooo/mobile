@@ -27,11 +27,7 @@ class _NavigationShellState extends State<NavigationShell> {
         showBottomNav: false,
         onNavItemSelected: _onItemSelected,
       ),
-      BottomNavItem.flashcard: FlashcardScreen(
-        showBottomNav: false,
-        showBackButton: false,
-        onNavItemSelected: _onItemSelected,
-      ),
+
       BottomNavItem.decks: DecksScreen(
         showBottomNav: false,
         onNavItemSelected: _onItemSelected,

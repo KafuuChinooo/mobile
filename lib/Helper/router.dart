@@ -47,8 +47,6 @@ class AppRouter {
         return BottomNavItem.home;
       case account:
         return BottomNavItem.account;
-      case flashcard:
-        return BottomNavItem.flashcard;
       case decks:
         return BottomNavItem.decks;
       default:

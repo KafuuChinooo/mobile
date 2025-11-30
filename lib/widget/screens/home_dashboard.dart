@@ -23,7 +23,7 @@ class HomeDashboardScreen extends StatelessWidget {
       currentItem: BottomNavItem.home,
       showBottomNav: showBottomNav,
       onNavItemSelected: onNavItemSelected,
-      body: SingleChildScrollView(
+      body: const SingleChildScrollView(
         padding: EdgeInsets.only(bottom: 24.0),
         child: Column(
           children: [
@@ -158,6 +158,7 @@ class _DashboardHeader extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
+                        color: Colors.black,
                       ),
                     ),
                   ],
@@ -212,7 +213,7 @@ class _DayCircle extends StatelessWidget {
           width: 24,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: active ? const Color(0xFFFFA726) : const Color(0xFFF1F1F1),
+            color: active ? const Color(0xFF2FC50D) : const Color(0xFFF1F1F1),
           ),
           child: active
               ? const Icon(Icons.check, size: 14, color: Colors.white)
@@ -309,19 +310,19 @@ class _DailyGoalsCard extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(width: 16),
+          SizedBox(width: 24),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '9 of 12 decks',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black),
                 ),
                 SizedBox(height: 6),
                 Text(
                   '30 of 100 cards',
-                  style: TextStyle(color: Colors.black54),
+                  style: TextStyle(color: Colors.black),
                 ),
               ],
             ),

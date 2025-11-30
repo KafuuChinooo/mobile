@@ -1,3 +1,5 @@
+import 'package:flash_card/Helper/router.dart';
+import 'package:flash_card/services/auth_service.dart';
 import 'package:flash_card/widget/app_bottom_nav.dart';
 import 'package:flash_card/widget/app_scaffold.dart';
 import 'package:flutter/material.dart';
@@ -64,7 +66,14 @@ class AccountScreen extends StatelessWidget {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () async {
+                  await AuthService.instance.signOut();
+                  if (!context.mounted) return;
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    AppRouter.login,
+                    (route) => false,
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor.withValues(alpha: 0.1),
                   elevation: 0,

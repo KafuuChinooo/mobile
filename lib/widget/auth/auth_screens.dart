@@ -4,7 +4,19 @@ import 'package:flutter/material.dart';
 
 void _showError(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message)),
+    SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.red,
+    ),
+  );
+}
+
+void _showSuccess(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.green,
+    ),
   );
 }
 
@@ -28,24 +40,53 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      _showError(context, 'Vui lòng nhập email để đặt lại mật khẩu');
+      return;
+    }
+
+    setState(() => _loading = true);
+    final result = await AuthService.instance.sendPasswordResetEmail(email);
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (result.ok) {
+      _showSuccess(context, result.message ?? 'Email đặt lại mật khẩu đã được gửi');
+    } else {
+      _showError(context, result.message ?? 'Gửi email thất bại');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFF7B61FF);
 
     return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        ),
+        title: const Text(
+          'Login',
+          style: TextStyle(color: Colors.black54, fontSize: 16),
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(Icons.arrow_back),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 24),
               const Text(
                 'Hey,\nWelcome\nBack',
                 style: TextStyle(
@@ -85,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: _handleForgotPassword,
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.black,
                     padding: EdgeInsets.zero,
@@ -94,17 +135,25 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: const Text('Forget password ?'),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 24),
               _PrimaryButton(
                 label: 'Login',
                 loading: _loading,
                 onPressed: _loading
                     ? null
                     : () async {
+                        final email = _emailController.text.trim();
+                        final password = _passwordController.text;
+
+                        if (email.isEmpty || password.isEmpty) {
+                          _showError(context, 'Vui lòng nhập đầy đủ email và password');
+                          return;
+                        }
+
                         setState(() => _loading = true);
                         final result = await AuthService.instance.signIn(
-                          email: _emailController.text.trim(),
-                          password: _passwordController.text,
+                          email: email,
+                          password: password,
                         );
                         if (!mounted) return;
                         setState(() => _loading = false);
@@ -112,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Navigator.of(context)
                               .pushReplacementNamed(AppRouter.home);
                         } else {
-                          _showError(context, result.message ?? 'Login failed');
+                          _showError(context, result.message ?? 'Đăng nhập thất bại');
                         }
                       },
               ),
@@ -189,11 +238,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFF7B61FF);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -202,7 +256,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             children: [
               IconButton(
                 onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -267,10 +321,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 onPressed: _loading
                     ? null
                     : () async {
+                        final email = _emailController.text.trim();
+                        final password = _passwordController.text;
+                        final confirm = _confirmController.text;
+
+                        if (!_isValidEmail(email)) {
+                          _showError(context, 'Vui lòng nhập email hợp lệ');
+                          return;
+                        }
+
+                        if (password != confirm) {
+                          _showError(context, 'Vui lòng nhập mật khẩu đúng');
+                          return;
+                        }
+                        
+                        if (password.isEmpty) {
+                           _showError(context, 'Vui lòng nhập mật khẩu');
+                          return;
+                        }
+
                         setState(() => _loading = true);
                         final result = await AuthService.instance.signUp(
-                          email: _emailController.text.trim(),
-                          password: _passwordController.text,
+                          email: email,
+                          password: password,
                         );
                         if (!mounted) return;
                         setState(() => _loading = false);
@@ -278,7 +351,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           Navigator.of(context)
                               .pushReplacementNamed(AppRouter.home);
                         } else {
-                          _showError(context, result.message ?? 'Sign up failed');
+                          _showError(context, result.message ?? 'Đăng ký thất bại');
                         }
                       },
               ),
@@ -358,12 +431,19 @@ class _AuthTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
+      style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: Icon(icon),
+        hintStyle: const TextStyle(color: Colors.black54),
+        prefixIcon: Icon(icon, color: Colors.black54),
         suffixIcon: suffix,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.black54),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.black54),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -449,10 +529,14 @@ class _GoogleButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.g_translate, color: Colors.black),
-            SizedBox(width: 12),
-            Text(
+          children: [
+            Image.asset(
+              'images/google_logo.png',
+              height: 24,
+              width: 24,
+            ),
+            const SizedBox(width: 12),
+            const Text(
               'Google',
               style: TextStyle(
                 color: Colors.black,
@@ -484,7 +568,7 @@ class _ContinueDivider extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             'or continue with',
-            style: TextStyle(fontWeight: FontWeight.w600),
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.black87),
           ),
         ),
         Expanded(

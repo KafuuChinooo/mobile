@@ -1,23 +1,23 @@
-import 'dart:collection';
-
+import 'package:flash_card/data/deck_repository.dart';
+import 'package:flash_card/model/deck.dart';
 import 'package:flash_card/widget/app_bottom_nav.dart';
 import 'package:flash_card/widget/app_scaffold.dart';
-import 'package:flash_card/widget/screens/quiz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_flip_card/controllers/flip_card_controllers.dart';
 import 'package:flutter_flip_card/flipcard/flip_card.dart';
 import 'package:flutter_flip_card/modal/flip_side.dart';
 
 // --- 1. WIDGET MÀN HÌNH CHÍNH ---
-// Widget này chứa cấu trúc cơ bản của màn hình (Scaffold, AppBar).
 class FlashcardScreen extends StatelessWidget {
+  final Deck deck;
   final bool showBottomNav;
   final bool showBackButton;
   final ValueChanged<BottomNavItem>? onNavItemSelected;
 
   const FlashcardScreen({
     super.key,
-    this.showBottomNav = true,
+    required this.deck,
+    this.showBottomNav = false,
     this.showBackButton = true,
     this.onNavItemSelected,
   });
@@ -25,23 +25,24 @@ class FlashcardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Flashcard',
+      title: deck.title,
       showBackButton: showBackButton,
-      currentItem: BottomNavItem.flashcard,
+      currentItem: BottomNavItem.decks,
       showBottomNav: showBottomNav,
       onNavItemSelected: onNavItemSelected,
       body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.0),
-        child: QuizScreenBody(),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: QuizScreenBody(deck: deck),
       ),
     );
   }
 }
 
 // --- 2. WIDGET NỘI DUNG FLASHCARD ---
-// Widget này quản lý trạng thái và giao diện của phần flashcard.
 class QuizScreenBody extends StatefulWidget {
-  const QuizScreenBody({super.key});
+  final Deck deck;
+
+  const QuizScreenBody({super.key, required this.deck});
 
   @override
   State<QuizScreenBody> createState() => _QuizScreenBodyState();
@@ -50,9 +51,33 @@ class QuizScreenBody extends StatefulWidget {
 class _QuizScreenBodyState extends State<QuizScreenBody> {
   // --- Biến Trạng Thái ---
   final FlipCardController _controller = FlipCardController();
-  final List<QuizQuestion> _quizQuestions = UnmodifiableListView(quizQuestions);
+  List<DeckCard> _cards = [];
+  bool _isLoading = true;
   int _currentQuestionIndex = 0;
   bool _showAnswer = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCards();
+  }
+
+  Future<void> _loadCards() async {
+    try {
+      final cards = await deckRepository.fetchCards(widget.deck.id);
+      if (mounted) {
+        setState(() {
+          _cards = cards;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      print("Error loading cards: $e");
+    }
+  }
 
   // --- Phương Thức Hỗ Trợ ---
   void _onToggleAnswerVisibility() {
@@ -76,7 +101,7 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
 
   void _onNextQuestion() {
     setState(() {
-      if (_currentQuestionIndex < _quizQuestions.length - 1) {
+      if (_currentQuestionIndex < _cards.length - 1) {
         _currentQuestionIndex++;
         if (_showAnswer) {
           _controller.flipcard();
@@ -89,23 +114,34 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
   // --- Giao Diện ---
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_cards.isEmpty) {
+      return const Center(
+        child: Text('This deck has no cards.', style: TextStyle(fontSize: 18, color: Colors.grey)),
+      );
+    }
+
+    final currentCard = _cards[_currentQuestionIndex];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 16),
         ProgressBar(
           currentIndex: _currentQuestionIndex,
-          totalQuestions: _quizQuestions.length,
+          totalQuestions: _cards.length,
         ),
         const SizedBox(height: 40),
         FlipCard(
           frontWidget: CardSection(
-            text: _quizQuestions[_currentQuestionIndex].question,
-            color: const Color(0xFFEED3FA), // Màu thẻ câu hỏi
+            text: currentCard.front,
+            color: const Color(0xFFEED3FA), 
           ),
           backWidget: CardSection(
-            text: _quizQuestions[_currentQuestionIndex].answer,
-            color: const Color(0xFFE3E1F6), // Màu thẻ đáp án
+            text: currentCard.back,
+            color: const Color(0xFFE3E1F6),
           ),
           controller: _controller,
           animationDuration: const Duration(milliseconds: 300),
@@ -119,7 +155,7 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
           onNextQuestion: _onNextQuestion,
           onToggleAnswerVisibility: _onToggleAnswerVisibility,
           currentQuestionIndex: _currentQuestionIndex,
-          quizQuestionLength: _quizQuestions.length,
+          quizQuestionLength: _cards.length,
           showAnswer: _showAnswer,
         ),
         const Spacer(),
@@ -130,7 +166,6 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
 
 // --- 3. CÁC WIDGET PHỤ ---
 
-// Widget hiển thị thanh tiến trình.
 class ProgressBar extends StatelessWidget {
   final int currentIndex;
   final int totalQuestions;
@@ -139,7 +174,7 @@ class ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progressValue = (currentIndex + 1) / totalQuestions;
+    final progressValue = totalQuestions > 0 ? (currentIndex + 1) / totalQuestions : 0.0;
     final progressPercentage = (progressValue * 100).round();
 
     return Column(
@@ -166,7 +201,6 @@ class ProgressBar extends StatelessWidget {
   }
 }
 
-// Widget hiển thị nội dung của thẻ.
 class CardSection extends StatelessWidget {
   final String text;
   final Color color;
@@ -176,13 +210,13 @@ class CardSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.5, // Tăng chiều cao
+      height: MediaQuery.of(context).size.height * 0.5, 
       width: double.infinity,
       padding: const EdgeInsets.all(16.0),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.all(Radius.circular(24.0)),
-        color: color, // Sử dụng màu được truyền vào
+        color: color,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.1),
@@ -192,17 +226,18 @@ class CardSection extends StatelessWidget {
           ),
         ],
       ),
-      child: Text(
-        text,
-        softWrap: true,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 32.0, fontWeight: FontWeight.w500, color: Colors.black87),
+      child: SingleChildScrollView(
+        child: Text(
+          text,
+          softWrap: true,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 32.0, fontWeight: FontWeight.w500, color: Colors.black87),
+        ),
       ),
     );
   }
 }
 
-// Widget chứa các nút điều khiển.
 class CardControllerSection extends StatelessWidget {
   final void Function() onPreviousQuestion;
   final void Function() onNextQuestion;

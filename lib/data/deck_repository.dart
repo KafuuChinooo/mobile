@@ -1,54 +1,108 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flash_card/model/deck.dart';
 
 abstract class DeckRepository {
   Future<List<Deck>> fetchDecks();
+  Future<List<DeckCard>> fetchCards(String deckId);
   Future<void> addDeck(Deck deck);
-
-  static final DeckRepository instance = InMemoryDeckRepository._internal();
+  Future<void> updateDeck(Deck deck);
+  Future<void> deleteDeck(String deckId);
 }
 
-class InMemoryDeckRepository implements DeckRepository {
-  final List<Deck> _decks = [];
-  int _idCounter = 0;
+final DeckRepository deckRepository = FirestoreDeckRepository();
 
-  InMemoryDeckRepository._internal() {
-    _seedData();
-  }
+class FirestoreDeckRepository implements DeckRepository {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(
+    app: Firebase.app(),
+    databaseId: 'flashcard',
+  );
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  void _seedData() {
-    if (_decks.isNotEmpty) return;
-    _decks.add(
-      Deck(
-        id: _nextId(),
-        title: 'Deck 2',
-        description: 'Sample deck synced from local store',
-        createdAt: DateTime.now(),
-        cards: const [
-          DeckCard(word: 'Hello', answer: 'Xin chào'),
-          DeckCard(word: 'Food', answer: 'Thức ăn'),
-        ],
-      ),
-    );
+  CollectionReference<Map<String, dynamic>> _getDecksCollection() {
+    return _firestore.collection('decks');
   }
 
   @override
   Future<List<Deck>> fetchDecks() async {
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    return List<Deck>.unmodifiable(_decks);
+    final user = _auth.currentUser;
+    if (user == null) return [];
+
+    try {
+      final querySnapshot = await _getDecksCollection()
+          .where('authorId', isEqualTo: user.uid)
+          .orderBy('created_at', descending: true) // Sửa tên field
+          .get();
+
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return Deck.fromJson(data);
+      }).toList();
+    } catch (e) {
+      print('Error fetching decks: $e');
+      return [];
+    }
+  }
+  
+  @override
+  Future<List<DeckCard>> fetchCards(String deckId) async {
+    try {
+      final snapshot = await _getDecksCollection().doc(deckId).collection('cards').get();
+      return snapshot.docs.map((doc) => DeckCard.fromJson(doc.data())).toList();
+    } catch (e) {
+      print('Error fetching cards: $e');
+      return [];
+    }
   }
 
   @override
   Future<void> addDeck(Deck deck) async {
-    final newDeck = deck.id.isEmpty
-        ? deck.copyWith(id: _nextId(), createdAt: DateTime.now())
-        : deck;
-    _decks.insert(0, newDeck);
-    await Future<void>.delayed(const Duration(milliseconds: 80));
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('User not logged in');
+    
+    try {
+      final docRef = _getDecksCollection().doc();
+      final cards = deck.cards;
+      
+      // Tạo object Deck mới với đầy đủ các trường
+      final Deck fullDeck = Deck(
+        id: docRef.id,
+        title: deck.title,
+        description: deck.description,
+        authorId: user.uid,
+        cardCount: cards.length,
+        createdAt: DateTime.now(), // Sẽ bị ghi đè bởi serverTimestamp
+        isPublic: deck.isPublic,
+        tags: deck.tags,
+        category: deck.category,
+      );
+      
+      await docRef.set(fullDeck.toJson());
+
+      final cardsCollection = docRef.collection('cards');
+      for (var card in cards) {
+        final cardDocRef = cardsCollection.doc(); // Tự tạo ID cho card
+        await cardDocRef.set(card.toJson());
+      }
+
+    } catch (e) {
+      print('Error adding deck: $e');
+      rethrow;
+    }
   }
 
-  String _nextId() {
-    _idCounter += 1;
-    return '${DateTime.now().microsecondsSinceEpoch}-$_idCounter';
+  @override
+  Future<void> updateDeck(Deck deck) async {
+    // Logic update sẽ cần làm sau
+  }
+
+  @override
+  Future<void> deleteDeck(String deckId) async {
+    // Logic delete sẽ cần làm sau
   }
 }
+
+// ... InMemoryDeckRepository ...
