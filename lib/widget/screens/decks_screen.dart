@@ -63,6 +63,7 @@ class _DecksScreenState extends State<DecksScreen> {
   }
 
   void _openFlashcard(Deck deck) {
+    _repository.markDeckOpened(deck.id);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => FlashcardScreen(deck: deck, showBackButton: true, showBottomNav: false),

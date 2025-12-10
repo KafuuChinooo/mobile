@@ -1,0 +1,71 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+class UserProfile {
+  final String uid;
+  final String? email;
+  final String displayName;
+
+  const UserProfile({
+    required this.uid,
+    required this.displayName,
+    this.email,
+  });
+}
+
+class UserProfileService {
+  UserProfileService._();
+  static final UserProfileService instance = UserProfileService._();
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(
+    app: Firebase.app(),
+    databaseId: 'flashcard',
+  );
+
+  DocumentReference<Map<String, dynamic>> _userDoc(String uid) =>
+      _firestore.collection('users').doc(uid);
+
+  Future<UserProfile?> fetchCurrentProfile() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+
+    final doc = await _userDoc(user.uid).get();
+    final data = doc.data();
+    final displayName = data != null && data['displayName'] is String && (data['displayName'] as String).isNotEmpty
+        ? data['displayName'] as String
+        : (user.displayName ?? user.email ?? '');
+    return UserProfile(
+      uid: user.uid,
+      displayName: displayName,
+      email: user.email,
+    );
+  }
+
+  Future<void> createUserProfile({
+    required String uid,
+    required String displayName,
+    required String? email,
+  }) async {
+    await _userDoc(uid).set({
+      'displayName': displayName,
+      'email': email,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateDisplayName(String newName) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not logged in');
+    }
+
+    await user.updateDisplayName(newName);
+    await _userDoc(user.uid).set({
+      'displayName': newName,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+}

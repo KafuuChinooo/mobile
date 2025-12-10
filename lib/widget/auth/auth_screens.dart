@@ -99,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 32),
               _AuthTextField(
                 controller: _emailController,
-                hint: 'Username',
+                hint: 'Email',
                 icon: Icons.person_outline,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
@@ -158,8 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (!mounted) return;
                         setState(() => _loading = false);
                         if (result.ok) {
-                          Navigator.of(context)
-                              .pushReplacementNamed(AppRouter.home);
+                          Navigator.of(context).pushReplacementNamed(AppRouter.home);
                         } else {
                           _showError(context, result.message ?? 'Đăng nhập thất bại');
                         }
@@ -177,8 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (!mounted) return;
                         setState(() => _loading = false);
                         if (result.ok) {
-                          Navigator.of(context)
-                              .pushReplacementNamed(AppRouter.home);
+                          Navigator.of(context).pushReplacementNamed(AppRouter.home);
                         } else {
                           _showError(
                             context,
@@ -223,6 +221,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
@@ -232,6 +231,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
@@ -272,9 +272,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 32),
               _AuthTextField(
-                controller: _emailController,
+                controller: _usernameController,
                 hint: 'Username',
                 icon: Icons.person_outline,
+                keyboardType: TextInputType.name,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 18),
+              _AuthTextField(
+                controller: _emailController,
+                hint: 'Email',
+                icon: Icons.alternate_email,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
               ),
@@ -321,22 +329,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 onPressed: _loading
                     ? null
                     : () async {
+                        final username = _usernameController.text.trim();
                         final email = _emailController.text.trim();
                         final password = _passwordController.text;
                         final confirm = _confirmController.text;
 
+                        if (username.isEmpty) {
+                          _showError(context, 'Vui lòng nhập username');
+                          return;
+                        }
                         if (!_isValidEmail(email)) {
                           _showError(context, 'Vui lòng nhập email hợp lệ');
                           return;
                         }
 
                         if (password != confirm) {
-                          _showError(context, 'Vui lòng nhập mật khẩu đúng');
+                          _showError(context, 'Vui lòng nhập mật khẩu giống nhau');
                           return;
                         }
-                        
+
                         if (password.isEmpty) {
-                           _showError(context, 'Vui lòng nhập mật khẩu');
+                          _showError(context, 'Vui lòng nhập mật khẩu');
                           return;
                         }
 
@@ -344,12 +357,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         final result = await AuthService.instance.signUp(
                           email: email,
                           password: password,
+                          username: username,
                         );
                         if (!mounted) return;
                         setState(() => _loading = false);
                         if (result.ok) {
-                          Navigator.of(context)
-                              .pushReplacementNamed(AppRouter.home);
+                          Navigator.of(context).pushReplacementNamed(AppRouter.home);
                         } else {
                           _showError(context, result.message ?? 'Đăng ký thất bại');
                         }
@@ -367,8 +380,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         if (!mounted) return;
                         setState(() => _loading = false);
                         if (result.ok) {
-                          Navigator.of(context)
-                              .pushReplacementNamed(AppRouter.home);
+                          Navigator.of(context).pushReplacementNamed(AppRouter.home);
                         } else {
                           _showError(
                             context,
@@ -431,25 +443,17 @@ class _AuthTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
-      style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.black54),
         prefixIcon: Icon(icon, color: Colors.black54),
         suffixIcon: suffix,
+        hintText: hint,
+        filled: true,
+        fillColor: const Color(0xFFF7F7F7),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.black54),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.black54),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.black, width: 1.2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       ),
     );
   }
@@ -457,52 +461,43 @@ class _AuthTextField extends StatelessWidget {
 
 class _PrimaryButton extends StatelessWidget {
   final String label;
-  final Future<void> Function()? onPressed;
   final bool loading;
+  final VoidCallback? onPressed;
 
   const _PrimaryButton({
     required this.label,
-    this.onPressed,
-    this.loading = false,
+    required this.loading,
+    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFF7B61FF);
-
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: loading
-            ? null
-            : (onPressed == null
-                ? null
-                : () async {
-                    await onPressed!.call();
-                  }),
+        onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
+          backgroundColor: const Color(0xFF7B61FF),
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
           elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
         child: loading
             ? const SizedBox(
-                height: 20,
-                width: 20,
+                height: 24,
+                width: 24,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation(Colors.white),
                 ),
               )
-            : Text(label),
+            : Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
       ),
     );
   }
@@ -521,30 +516,15 @@ class _GoogleButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.black,
+          side: const BorderSide(color: Colors.black12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
-          side: const BorderSide(color: Colors.black, width: 1),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'images/google_logo.png',
-              height: 24,
-              width: 24,
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Google',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+        child: const Text(
+          'Continue as guest',
+          style: TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -557,26 +537,16 @@ class _ContinueDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: [
-        Expanded(
-          child: Divider(
-            color: Colors.black.withOpacity(0.4),
-            thickness: 1,
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
+      children: const [
+        Expanded(child: Divider(color: Colors.black26)),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8.0),
           child: Text(
-            'or continue with',
-            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.black87),
+            'Or continue with',
+            style: TextStyle(color: Colors.black54),
           ),
         ),
-        Expanded(
-          child: Divider(
-            color: Colors.black.withOpacity(0.4),
-            thickness: 1,
-          ),
-        ),
+        Expanded(child: Divider(color: Colors.black26)),
       ],
     );
   }

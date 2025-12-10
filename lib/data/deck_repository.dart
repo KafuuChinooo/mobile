@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -10,6 +11,7 @@ abstract class DeckRepository {
   Future<void> addDeck(Deck deck);
   Future<void> updateDeck(Deck deck);
   Future<void> deleteDeck(String deckId);
+  Future<void> markDeckOpened(String deckId);
 }
 
 final DeckRepository deckRepository = FirestoreDeckRepository();
@@ -33,7 +35,7 @@ class FirestoreDeckRepository implements DeckRepository {
     try {
       final querySnapshot = await _getDecksCollection()
           .where('authorId', isEqualTo: user.uid)
-          .orderBy('created_at', descending: true) // Sửa tên field
+          .orderBy('created_at', descending: true)
           .get();
 
       return querySnapshot.docs.map((doc) {
@@ -46,7 +48,7 @@ class FirestoreDeckRepository implements DeckRepository {
       return [];
     }
   }
-  
+
   @override
   Future<List<DeckCard>> fetchCards(String deckId) async {
     try {
@@ -62,32 +64,31 @@ class FirestoreDeckRepository implements DeckRepository {
   Future<void> addDeck(Deck deck) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('User not logged in');
-    
+
     try {
       final docRef = _getDecksCollection().doc();
       final cards = deck.cards;
-      
-      // Tạo object Deck mới với đầy đủ các trường
+
       final Deck fullDeck = Deck(
         id: docRef.id,
         title: deck.title,
         description: deck.description,
         authorId: user.uid,
         cardCount: cards.length,
-        createdAt: DateTime.now(), // Sẽ bị ghi đè bởi serverTimestamp
+        createdAt: DateTime.now(),
         isPublic: deck.isPublic,
         tags: deck.tags,
         category: deck.category,
+        lastOpenedAt: null,
       );
-      
+
       await docRef.set(fullDeck.toJson());
 
       final cardsCollection = docRef.collection('cards');
       for (var card in cards) {
-        final cardDocRef = cardsCollection.doc(); // Tự tạo ID cho card
+        final cardDocRef = cardsCollection.doc();
         await cardDocRef.set(card.toJson());
       }
-
     } catch (e) {
       print('Error adding deck: $e');
       rethrow;
@@ -96,13 +97,24 @@ class FirestoreDeckRepository implements DeckRepository {
 
   @override
   Future<void> updateDeck(Deck deck) async {
-    // Logic update sẽ cần làm sau
+    // TODO: implement update logic
   }
 
   @override
   Future<void> deleteDeck(String deckId) async {
-    // Logic delete sẽ cần làm sau
+    // TODO: implement delete logic
+  }
+
+  @override
+  Future<void> markDeckOpened(String deckId) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    try {
+      await _getDecksCollection().doc(deckId).update({
+        'last_opened_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error updating last opened: $e');
+    }
   }
 }
-
-// ... InMemoryDeckRepository ...

@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flash_card/services/user_profile_service.dart';
 
 class AuthService {
   AuthService._();
@@ -27,12 +28,22 @@ class AuthService {
   Future<AuthResult> signUp({
     required String email,
     required String password,
+    required String username,
   }) async {
     try {
-      await _auth.createUserWithEmailAndPassword(
+      final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      final user = credential.user;
+      if (user != null) {
+        await user.updateDisplayName(username);
+        await UserProfileService.instance.createUserProfile(
+          uid: user.uid,
+          displayName: username,
+          email: email,
+        );
+      }
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_mapError(e));

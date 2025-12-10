@@ -1,8 +1,15 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flash_card/data/deck_repository.dart';
+import 'package:flash_card/model/deck.dart';
+import 'package:flash_card/services/daily_progress_service.dart';
+import 'package:flash_card/services/user_profile_service.dart';
 import 'package:flash_card/widget/app_bottom_nav.dart';
 import 'package:flash_card/widget/app_scaffold.dart';
+import 'package:flash_card/widget/screens/add_deck_screen.dart';
+import 'package:flash_card/widget/screens/flashcard.dart';
 import 'package:flutter/material.dart';
 
-class HomeDashboardScreen extends StatelessWidget {
+class HomeDashboardScreen extends StatefulWidget {
   final bool showBottomNav;
   final ValueChanged<BottomNavItem>? onNavItemSelected;
 
@@ -13,50 +20,209 @@ class HomeDashboardScreen extends StatelessWidget {
   });
 
   @override
+  State<HomeDashboardScreen> createState() => _HomeDashboardScreenState();
+}
+
+class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
+  final DeckRepository _deckRepository = deckRepository;
+
+  DailyProgressSnapshot? _progress;
+  bool _loadingProgress = true;
+  String? _progressError;
+
+  List<Deck> _recentDecks = [];
+  bool _loadingDecks = true;
+  String? _deckError;
+  String? _displayName;
+  bool _loadingProfile = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgress();
+    _loadRecentDecks();
+    _loadProfile();
+  }
+
+  Future<void> _refreshAll() async {
+    await Future.wait([
+      _loadProgress(),
+      _loadRecentDecks(),
+      _loadProfile(),
+    ]);
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      _loadingProfile = true;
+    });
+    final profile = await UserProfileService.instance.fetchCurrentProfile();
+    if (!mounted) return;
+    setState(() {
+      _displayName = profile?.displayName;
+      _loadingProfile = false;
+    });
+  }
+
+  Future<void> _loadProgress() async {
+    setState(() {
+      _loadingProgress = true;
+      _progressError = null;
+    });
+
+    try {
+      final result = await DailyProgressService.instance.fetchProgress();
+      if (!mounted) return;
+      setState(() {
+        _progress = result;
+        _loadingProgress = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _progressError = 'Khong tai duoc tien do: $e';
+        _loadingProgress = false;
+      });
+    }
+  }
+
+  Future<void> _loadRecentDecks() async {
+    setState(() {
+      _loadingDecks = true;
+      _deckError = null;
+    });
+
+    try {
+      final decks = await _deckRepository.fetchDecks();
+      decks.sort((a, b) {
+        final aDate = a.lastOpenedAt ?? a.createdAt;
+        final bDate = b.lastOpenedAt ?? b.createdAt;
+        return bDate.compareTo(aDate);
+      });
+      final limited = decks.length > 10 ? decks.sublist(0, 10) : decks;
+      if (!mounted) return;
+      setState(() {
+        _recentDecks = limited;
+        _loadingDecks = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _deckError = 'Khong tai duoc deck: $e';
+        _loadingDecks = false;
+      });
+    }
+  }
+
+  Future<void> _checkInToday() async {
+    setState(() {
+      _loadingProgress = true;
+      _progressError = null;
+    });
+
+    try {
+      final result = await DailyProgressService.instance.markTodayActive();
+      if (!mounted) return;
+      setState(() {
+        _progress = result;
+        _loadingProgress = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _progressError = 'Check-in that bai: $e';
+        _loadingProgress = false;
+      });
+    }
+  }
+
+  Future<void> _openDeck(Deck deck) async {
+    await _deckRepository.markDeckOpened(deck.id);
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FlashcardScreen(
+          deck: deck,
+          showBackButton: true,
+          showBottomNav: false,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    _loadRecentDecks();
+  }
+
+  Future<void> _openAddDeck() async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AddDeckScreen()),
+    );
+    if (result == true && mounted) {
+      _loadRecentDecks();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     const accent = Color(0xFF7233FE);
     const secondaryAccent = Color(0xFFAA80FF);
+    final progress = _progress ?? const DailyProgressSnapshot.empty();
 
     return AppScaffold(
       title: 'Dashboard',
       showAppBar: false,
       currentItem: BottomNavItem.home,
-      showBottomNav: showBottomNav,
-      onNavItemSelected: onNavItemSelected,
-      body: const SingleChildScrollView(
-        padding: EdgeInsets.only(bottom: 24.0),
-        child: Column(
-          children: [
-            _DashboardHeader(accent: accent, secondaryAccent: secondaryAccent),
-            SizedBox(height: 16),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _StreakCard(),
-                  SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(child: _DailyGoalsCard()),
-                      SizedBox(width: 12),
-                      Expanded(child: _TotalCardsCard()),
-                    ],
-                  ),
-                  SizedBox(height: 24),
-                  Text(
-                    'Previous decks',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  _DeckList(),
-                ],
+      showBottomNav: widget.showBottomNav,
+      onNavItemSelected: widget.onNavItemSelected,
+      body: RefreshIndicator(
+        onRefresh: _refreshAll,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 24.0),
+          child: Column(
+            children: [
+              _DashboardHeader(
+                accent: accent,
+                secondaryAccent: secondaryAccent,
+                progress: progress,
+                loading: _loadingProgress,
+                loadingProfile: _loadingProfile,
+                displayName: _displayName,
+                onCheckIn: _checkInToday,
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              if (_progressError != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: _ErrorBanner(message: _progressError!, onRetry: _loadProgress),
+                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _StreakStatsCard(progress: progress),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Previous decks',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _RecentDeckSection(
+                      decks: _recentDecks,
+                      loading: _loadingDecks,
+                      error: _deckError,
+                      onRetry: _loadRecentDecks,
+                      onAddDeck: _openAddDeck,
+                      onOpenDeck: _openDeck,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -66,14 +232,30 @@ class HomeDashboardScreen extends StatelessWidget {
 class _DashboardHeader extends StatelessWidget {
   final Color accent;
   final Color secondaryAccent;
+  final DailyProgressSnapshot progress;
+  final bool loading;
+  final bool loadingProfile;
+  final String? displayName;
+  final VoidCallback onCheckIn;
 
   const _DashboardHeader({
     required this.accent,
     required this.secondaryAccent,
+    required this.progress,
+    required this.loading,
+    required this.loadingProfile,
+    required this.displayName,
+    required this.onCheckIn,
   });
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final name = displayName?.isNotEmpty == true
+        ? displayName!
+        : (user?.displayName ?? user?.email ?? 'Learner');
+    final week = progress.week.isNotEmpty ? progress.week : _placeholderWeek();
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -108,20 +290,20 @@ class _DashboardHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Welcome back!',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
-                    'Kafuu Chino',
-                    style: TextStyle(
+                    name,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -131,7 +313,7 @@ class _DashboardHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -140,47 +322,58 @@ class _DashboardHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: Colors.black.withOpacity(0.05),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),
               ],
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(Icons.local_fire_department, color: Colors.orange, size: 28),
-                    SizedBox(width: 8),
-                    Text(
-                      '4-day streak',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
+                    Row(
+                      children: [
+                        const Icon(Icons.local_fire_department, color: Colors.orange, size: 28),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${progress.currentStreak}-day streak',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                    TextButton(
+                      onPressed: loading || progress.isTodayDone ? null : onCheckIn,
+                      child: Text(progress.isTodayDone ? 'Checked in' : 'Check in'),
                     ),
                   ],
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
-                  'Learn daily, keep your streak up',
-                  style: TextStyle(color: Colors.black54),
+                  progress.isTodayDone
+                      ? 'You logged activity today. Keep it going!'
+                      : 'Log one session today to keep your streak.',
+                  style: const TextStyle(color: Colors.black54),
                 ),
-                SizedBox(height: 18),
+                const SizedBox(height: 18),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _DayCircle(label: 'Su', active: true),
-                    _DayCircle(label: 'Mo', active: true),
-                    _DayCircle(label: 'Tu', active: true),
-                    _DayCircle(label: 'We', active: true),
-                    _DayCircle(label: 'Th', active: false),
-                    _DayCircle(label: 'Fr', active: false),
-                    _DayCircle(label: 'Sa', active: false),
-                  ],
-                )
+                  children: week
+                      .map(
+                        (day) => _DayCircle(
+                          label: _weekdayLabel(day.date),
+                          active: day.done,
+                          isToday: _isSameDate(day.date, DateTime.now()),
+                        ),
+                      )
+                      .toList(),
+                ),
               ],
             ),
           ),
@@ -188,16 +381,28 @@ class _DashboardHeader extends StatelessWidget {
       ),
     );
   }
+
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
 }
 
 class _DayCircle extends StatelessWidget {
   final String label;
   final bool active;
+  final bool isToday;
 
-  const _DayCircle({required this.label, required this.active});
+  const _DayCircle({
+    required this.label,
+    required this.active,
+    required this.isToday,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final Color fill = active ? const Color(0xFF2FC50D) : const Color(0xFFF1F1F1);
+    final border = isToday ? Border.all(color: const Color(0xFF7233FE), width: 2) : null;
+
     return Column(
       children: [
         Text(
@@ -209,11 +414,12 @@ class _DayCircle extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Container(
-          height: 24,
-          width: 24,
+          height: 28,
+          width: 28,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: active ? const Color(0xFF2FC50D) : const Color(0xFFF1F1F1),
+            color: fill,
+            border: border,
           ),
           child: active
               ? const Icon(Icons.check, size: 14, color: Colors.white)
@@ -224,8 +430,10 @@ class _DayCircle extends StatelessWidget {
   }
 }
 
-class _StreakCard extends StatelessWidget {
-  const _StreakCard();
+class _StreakStatsCard extends StatelessWidget {
+  final DailyProgressSnapshot progress;
+
+  const _StreakStatsCard({required this.progress});
 
   @override
   Widget build(BuildContext context) {
@@ -233,37 +441,31 @@ class _StreakCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Daily goals',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '4-day streak',
-                style: TextStyle(color: Colors.deepOrange),
-              ),
-            ],
+          _StatItem(
+            title: 'Current streak',
+            value: '${progress.currentStreak} days',
           ),
-          SizedBox(height: 12),
-          Text(
-            'Keep up the momentum! You are almost there for this week.',
-            style: TextStyle(color: Colors.black54),
+          _StatItem(
+            title: 'Longest streak',
+            value: '${progress.longestStreak} days',
+          ),
+          _StatItem(
+            title: 'Last active',
+            value: progress.lastActiveDate == null
+                ? 'N/A'
+                : _formatDate(progress.lastActiveDate!),
           ),
         ],
       ),
@@ -271,147 +473,119 @@ class _StreakCard extends StatelessWidget {
   }
 }
 
-class _DailyGoalsCard extends StatelessWidget {
-  const _DailyGoalsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1E7FF),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: const Row(
-        children: [
-          SizedBox(
-            height: 66,
-            width: 66,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  height: 60,
-                  width: 60,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 7,
-                    value: 0.75,
-                    backgroundColor: Colors.white,
-                    valueColor: AlwaysStoppedAnimation(Color(0xFF7233FE)),
-                  ),
-                ),
-                Text(
-                  '75%',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF7233FE),
-                  ),
-                )
-              ],
-            ),
-          ),
-          SizedBox(width: 24),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '9 of 12 decks',
-                  style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  '30 of 100 cards',
-                  style: TextStyle(color: Colors.black),
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-}
-
-class _TotalCardsCard extends StatelessWidget {
-  const _TotalCardsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F5FF),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Total cards',
-            style: TextStyle(
-              color: Colors.black54,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '500',
-            style: TextStyle(
-              fontSize: 32,
-              color: Color(0xFF7233FE),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class DeckProgress {
+class _StatItem extends StatelessWidget {
   final String title;
-  final int cards;
-  final double progress;
+  final String value;
 
-  const DeckProgress({
+  const _StatItem({
     required this.title,
-    required this.cards,
-    required this.progress,
+    required this.value,
   });
-}
-
-class _DeckList extends StatelessWidget {
-  const _DeckList();
-
-  static const decks = [
-    DeckProgress(
-      title: 'IELTS Vocab_ Environment',
-      cards: 20,
-      progress: 0.7,
-    ),
-    DeckProgress(
-      title: 'Animal Kingdom',
-      cards: 30,
-      progress: 0.45,
-    ),
-    DeckProgress(
-      title: 'Food & Cooking',
-      cards: 15,
-      progress: 0.3,
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(color: Colors.black54),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecentDeckSection extends StatelessWidget {
+  final List<Deck> decks;
+  final bool loading;
+  final String? error;
+  final Future<void> Function() onRetry;
+  final VoidCallback onAddDeck;
+  final void Function(Deck deck) onOpenDeck;
+
+  const _RecentDeckSection({
+    required this.decks,
+    required this.loading,
+    required this.error,
+    required this.onRetry,
+    required this.onAddDeck,
+    required this.onOpenDeck,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return Container(
+        height: 160,
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(),
+      );
+    }
+
+    if (error != null) {
+      return _ErrorBanner(message: error!, onRetry: onRetry);
+    }
+
+    if (decks.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F5FF),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE6E6E6)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Chua co gi o day ca, hay tao deck moi de bat dau nhe!!',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7233FE),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: onAddDeck,
+                icon: const Icon(Icons.add),
+                label: const Text('Tao deck moi'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return SizedBox(
-      height: 150,
+      height: 160,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: decks.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final deck = decks[index];
-          return _DeckCard(deck: deck);
+          return _DeckCard(
+            deck: deck,
+            onTap: () => onOpenDeck(deck),
+          );
         },
       ),
     );
@@ -419,49 +593,139 @@ class _DeckList extends StatelessWidget {
 }
 
 class _DeckCard extends StatelessWidget {
-  final DeckProgress deck;
+  final Deck deck;
+  final VoidCallback onTap;
 
-  const _DeckCard({required this.deck});
+  const _DeckCard({
+    required this.deck,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = deck.description.isNotEmpty
+        ? deck.description
+        : '${deck.cardCount} cards';
+    final lastOpened = deck.lastOpenedAt != null ? _formatDate(deck.lastOpenedAt!) : 'Never';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 200,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE6E6E6)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              deck.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.black54),
+            ),
+            const Spacer(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${deck.cardCount} cards',
+                  style: const TextStyle(
+                    color: Colors.black54,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  lastOpened,
+                  style: const TextStyle(
+                    color: Color(0xFF7233FE),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
+
+  const _ErrorBanner({
+    required this.message,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 180,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE6E6E6)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: const Color(0xFFFFF2E6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFC29D)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            deck.title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
+          const Icon(Icons.error_outline, color: Colors.deepOrange),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.black87),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            '${deck.cards} cards',
-            style: const TextStyle(color: Colors.black54),
-          ),
-          const Spacer(),
-          LinearProgressIndicator(
-            value: deck.progress,
-            backgroundColor: const Color(0xFFE0E0E0),
-            valueColor: const AlwaysStoppedAnimation(Color(0xFF7233FE)),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
           ),
         ],
       ),
     );
   }
+}
+
+String _weekdayLabel(DateTime date) {
+  const labels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  final index = date.weekday % 7;
+  return labels[index];
+}
+
+List<DayCheckin> _placeholderWeek() {
+  final now = DateTime.now();
+  final start = now.subtract(Duration(days: now.weekday % 7));
+  return List.generate(
+    7,
+    (i) => DayCheckin(date: start.add(Duration(days: i)), done: false),
+  );
+}
+
+String _formatDate(DateTime date) {
+  final mm = date.month.toString().padLeft(2, '0');
+  final dd = date.day.toString().padLeft(2, '0');
+  return '$dd/$mm';
 }

@@ -33,6 +33,7 @@ class Deck {
   final String authorId;
   final int cardCount;
   final DateTime createdAt;
+  final DateTime? lastOpenedAt;
   final bool isPublic;
   final List<String> tags;
   final String category;
@@ -45,9 +46,10 @@ class Deck {
     required this.authorId,
     required this.cardCount,
     required this.createdAt,
-    this.isPublic = true, // Giá trị mặc định
-    this.tags = const [], // Giá trị mặc định
-    this.category = '', // Giá trị mặc định
+    this.lastOpenedAt,
+    this.isPublic = true,
+    this.tags = const [],
+    this.category = '',
     this.cards = const [],
   });
 
@@ -58,6 +60,7 @@ class Deck {
     String? authorId,
     int? cardCount,
     DateTime? createdAt,
+    DateTime? lastOpenedAt,
     bool? isPublic,
     List<String>? tags,
     String? category,
@@ -70,6 +73,7 @@ class Deck {
       authorId: authorId ?? this.authorId,
       cardCount: cardCount ?? this.cardCount,
       createdAt: createdAt ?? this.createdAt,
+      lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
       isPublic: isPublic ?? this.isPublic,
       tags: tags ?? this.tags,
       category: category ?? this.category,
@@ -82,7 +86,8 @@ class Deck {
         'description': description,
         'authorId': authorId,
         'cardCount': cardCount,
-        'created_at': FieldValue.serverTimestamp(), // Đổi tên field
+        'created_at': FieldValue.serverTimestamp(),
+        'last_opened_at': lastOpenedAt == null ? null : Timestamp.fromDate(lastOpenedAt!),
         'isPublic': isPublic,
         'tags': tags,
         'category': category,
@@ -95,7 +100,8 @@ class Deck {
       description: (json['description'] ?? '') as String,
       authorId: (json['authorId'] ?? '') as String,
       cardCount: (json['cardCount'] ?? 0) as int,
-      createdAt: (json['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(), // Đổi tên field
+      createdAt: (json['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      lastOpenedAt: (json['last_opened_at'] as Timestamp?)?.toDate(),
       isPublic: (json['isPublic'] ?? true) as bool,
       tags: List<String>.from(json['tags'] ?? []),
       category: (json['category'] ?? '') as String,
