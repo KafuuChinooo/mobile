@@ -9,6 +9,7 @@ import 'package:flash_card/widget/screens/add_deck_screen.dart';
 import 'package:flash_card/widget/screens/flashcard.dart';
 import 'package:flutter/material.dart';
 
+//Quản lý dữ liệu
 class HomeDashboardScreen extends StatefulWidget {
   final bool showBottomNav;
   final ValueChanged<BottomNavItem>? onNavItemSelected;
@@ -26,6 +27,7 @@ class HomeDashboardScreen extends StatefulWidget {
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   final DeckRepository _deckRepository = deckRepository;
 
+  //Data tiến trình hịc hằng ngày (Streak, lịch sử check-in)
   DailyProgressSnapshot? _progress;
   bool _loadingProgress = true;
   String? _progressError;
@@ -44,6 +46,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     _loadProfile();
   }
 
+  //LOGIC XỬ LÝ DỮ LIỆU
   Future<void> _refreshAll() async {
     await Future.wait([
       _loadProgress(),
@@ -161,6 +164,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     }
   }
 
+  //GIAO DIỆN CHÍNH
   @override
   Widget build(BuildContext context) {
     const accent = Color(0xFF7233FE);
@@ -180,6 +184,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           padding: const EdgeInsets.only(bottom: 24.0),
           child: Column(
             children: [
+              //Widget chứa nền tím, thông tin user, streak
               _DashboardHeader(
                 accent: accent,
                 secondaryAccent: secondaryAccent,
@@ -189,7 +194,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 displayName: _displayName,
                 onCheckIn: _checkInToday,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               if (_progressError != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -201,12 +206,12 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _StreakStatsCard(progress: progress),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 40),
                     const Text(
                       'Previous decks',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 18,
+                        fontSize: 20,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -262,17 +267,18 @@ class _DashboardHeader extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             accent,
-            secondaryAccent,
+            accent.withOpacity(0.3),
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
+          stops: const [0.5, 1.0],
         ),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(0),
           bottomRight: Radius.circular(0),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 48, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 100, 20, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -314,7 +320,7 @@ class _DashboardHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 30),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -362,17 +368,17 @@ class _DashboardHeader extends StatelessWidget {
                       : 'Log one session today to keep your streak.',
                   style: const TextStyle(color: Colors.black54),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: week
                       .map(
                         (day) => _DayCircle(
-                          label: _weekdayLabel(day.date),
-                          active: day.done,
-                          isToday: _isSameDate(day.date, DateTime.now()),
-                        ),
-                      )
+                      label: _weekdayLabel(day.date),
+                      active: day.done,
+                      isToday: _isSameDate(day.date, DateTime.now()),
+                    ),
+                  )
                       .toList(),
                 ),
               ],
@@ -430,6 +436,7 @@ class _DayCircle extends StatelessWidget {
   }
 }
 
+//Widget hiển thị con số thống kê
 class _StreakStatsCard extends StatelessWidget {
   final DailyProgressSnapshot progress;
 
@@ -440,11 +447,11 @@ class _StreakStatsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFDDD5FF),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),
@@ -455,11 +462,11 @@ class _StreakStatsCard extends StatelessWidget {
         children: [
           _StatItem(
             title: 'Current streak',
-            value: '${progress.currentStreak} days',
+            value: '${progress.currentStreak} ${progress.currentStreak == 1 ? 'day' : 'days'}',
           ),
           _StatItem(
             title: 'Longest streak',
-            value: '${progress.longestStreak} days',
+            value: '${progress.longestStreak} ${progress.longestStreak == 1 ? 'day' : 'days'}',
           ),
           _StatItem(
             title: 'Last active day',
@@ -485,18 +492,19 @@ class _StatItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           title,
-          style: const TextStyle(color: Colors.black54),
+          style: const TextStyle(color: Colors.black, fontSize: 14),
         ),
         const SizedBox(height: 4),
         Text(
           value,
           style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontSize: 19,
+            color: Color(0xFF7233FE),
+            fontWeight: FontWeight.bold,
           ),
         ),
       ],
@@ -504,6 +512,7 @@ class _StatItem extends StatelessWidget {
   }
 }
 
+//Widget hiển thị thông tin tạo deck nếu là người dùng mới
 class _RecentDeckSection extends StatelessWidget {
   final List<Deck> decks;
   final bool loading;
@@ -576,11 +585,11 @@ class _RecentDeckSection extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 160,
+      height: 180,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: decks.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, __) => const SizedBox(width: 16),
         itemBuilder: (context, index) {
           final deck = decks[index];
           return _DeckCard(
@@ -593,6 +602,7 @@ class _RecentDeckSection extends StatelessWidget {
   }
 }
 
+//Widget hiển thị từng bộ thẻ đơn lẻ (Tên, số lượng card, ngày mở cuối)
 class _DeckCard extends StatelessWidget {
   final Deck deck;
   final VoidCallback onTap;
@@ -612,8 +622,8 @@ class _DeckCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 200,
-        padding: const EdgeInsets.all(16),
+        width: 280,
+        padding: const EdgeInsets.fromLTRB(20, 25, 20, 20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -631,18 +641,20 @@ class _DeckCard extends StatelessWidget {
           children: [
             Text(
               deck.title,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                color: Color(0xFF7233FE),
               ),
             ),
             const SizedBox(height: 6),
             Text(
               subtitle,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.black54),
+              style: const TextStyle(color: Colors.black, fontSize: 16,),
             ),
             const Spacer(),
             Row(
@@ -651,15 +663,15 @@ class _DeckCard extends StatelessWidget {
                 Text(
                   '${deck.cardCount} cards',
                   style: const TextStyle(
-                    color: Colors.black54,
-                    fontSize: 12,
+                    color: Colors.black,
+                    fontSize: 16,
                   ),
                 ),
                 Text(
                   lastOpened,
                   style: const TextStyle(
                     color: Color(0xFF7233FE),
-                    fontSize: 12,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -721,7 +733,7 @@ List<DayCheckin> _placeholderWeek() {
   final start = now.subtract(Duration(days: now.weekday % 7));
   return List.generate(
     7,
-    (i) => DayCheckin(date: start.add(Duration(days: i)), done: false),
+        (i) => DayCheckin(date: start.add(Duration(days: i)), done: false),
   );
 }
 
