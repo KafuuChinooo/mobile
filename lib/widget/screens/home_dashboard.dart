@@ -80,7 +80,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _progressError = 'Khong tai duoc tien do: $e';
+        _progressError = 'Unable to load your progress: $e';
         _loadingProgress = false;
       });
     }
@@ -108,7 +108,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _deckError = 'Khong tai duoc deck: $e';
+        _deckError = 'Failed to load the deck: $e';
         _loadingDecks = false;
       });
     }
@@ -130,7 +130,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _progressError = 'Check-in that bai: $e';
+        _progressError = 'Check-in failed: $e';
         _loadingProgress = false;
       });
     }
@@ -189,7 +189,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 displayName: _displayName,
                 onCheckIn: _checkInToday,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               if (_progressError != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -201,15 +201,15 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _StreakStatsCard(progress: progress),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     const Text(
                       'Previous decks',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                        fontSize: 18,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     _RecentDeckSection(
                       decks: _recentDecks,
                       loading: _loadingDecks,
@@ -268,8 +268,8 @@ class _DashboardHeader extends StatelessWidget {
           end: Alignment.bottomCenter,
         ),
         borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
+          bottomLeft: Radius.circular(0),
+          bottomRight: Radius.circular(0),
         ),
       ),
       padding: const EdgeInsets.fromLTRB(20, 48, 20, 32),
@@ -297,10 +297,11 @@ class _DashboardHeader extends StatelessWidget {
                     'Welcome back!',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     name,
                     style: const TextStyle(
@@ -336,12 +337,12 @@ class _DashboardHeader extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.local_fire_department, color: Colors.orange, size: 28),
-                        const SizedBox(width: 8),
+                        const Icon(Icons.local_fire_department, color: Colors.orange, size: 35),
+                        const SizedBox(width: 10),
                         Text(
                           '${progress.currentStreak}-day streak',
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 22,
                             fontWeight: FontWeight.w600,
                             color: Colors.black,
                           ),
@@ -386,7 +387,6 @@ class _DashboardHeader extends StatelessWidget {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 }
-
 class _DayCircle extends StatelessWidget {
   final String label;
   final bool active;
@@ -400,7 +400,7 @@ class _DayCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color fill = active ? const Color(0xFF2FC50D) : const Color(0xFFF1F1F1);
+    final Color fill = active ? const Color(0xFFFFA500) : const Color(0xFFF1F1F1);
     final border = isToday ? Border.all(color: const Color(0xFF7233FE), width: 2) : null;
 
     return Column(
@@ -445,7 +445,7 @@ class _StreakStatsCard extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
+            blurRadius: 10,
             offset: const Offset(0, 6),
           ),
         ],
@@ -462,7 +462,7 @@ class _StreakStatsCard extends StatelessWidget {
             value: '${progress.longestStreak} days',
           ),
           _StatItem(
-            title: 'Last active',
+            title: 'Last active day',
             value: progress.lastActiveDate == null
                 ? 'N/A'
                 : _formatDate(progress.lastActiveDate!),
@@ -547,10 +547,11 @@ class _RecentDeckSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Chua co gi o day ca, hay tao deck moi de bat dau nhe!!',
+              'No decks yet. Create a new one to start.',
               style: TextStyle(
+                fontSize: 16,
                 color: Colors.black87,
-                fontWeight: FontWeight.w600,
+
               ),
             ),
             const SizedBox(height: 12),
@@ -566,7 +567,7 @@ class _RecentDeckSection extends StatelessWidget {
                 ),
                 onPressed: onAddDeck,
                 icon: const Icon(Icons.add),
-                label: const Text('Tao deck moi'),
+                label: const Text('Create'),
               ),
             ),
           ],

@@ -86,17 +86,17 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 24),
+              const SizedBox(height: 40),
               const Text(
-                'Hey,\nWelcome\nBack',
+                'Hey,\nWelcome Back',
                 style: TextStyle(
-                  fontSize: 36,
+                  fontSize: 50,
                   fontWeight: FontWeight.w800,
                   color: primary,
-                  height: 1.05,
+                  height: 1.1,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 60),
               _AuthTextField(
                 controller: _emailController,
                 hint: 'Email',
@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 22),
               _AuthTextField(
                 controller: _passwordController,
                 hint: 'Password',
@@ -122,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 15),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -264,13 +264,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
               const Text(
                 "Let's get\nstarted",
                 style: TextStyle(
-                  fontSize: 36,
+                  fontSize: 50,
                   fontWeight: FontWeight.w800,
                   color: primary,
-                  height: 1.05,
+                  height: 1.1,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 40),
               _AuthTextField(
                 controller: _usernameController,
                 hint: 'Username',

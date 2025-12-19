@@ -77,11 +77,11 @@ class _DecksScreenState extends State<DecksScreen> {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Xóa bộ thẻ?'),
-            content: const Text('Bạn có chắc chắn muốn xóa bộ thẻ này không?'),
+            title: const Text('Delete this deck?'),
+            content: const Text('Are you sure you want to delete this deck?'),
             actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Hủy')),
-              TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Xóa')),
+              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
             ],
           ),
         );
@@ -90,11 +90,11 @@ class _DecksScreenState extends State<DecksScreen> {
           try {
             await _repository.deleteDeck(deck.id);
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa bộ thẻ')));
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deck deleted')));
             await _loadDecks();
           } catch (e) {
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi xóa: $e')));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting the deck: $e')));
           }
         }
         break;
@@ -177,11 +177,11 @@ class _DecksScreenState extends State<DecksScreen> {
                                       itemBuilder: (context) => [
                                         const PopupMenuItem(
                                           value: _DeckAction.edit,
-                                          child: Text('Chỉnh sửa'),
+                                          child: Text('Edit'),
                                         ),
                                         const PopupMenuItem(
                                           value: _DeckAction.delete,
-                                          child: Text('Xóa'),
+                                          child: Text('Delete'),
                                         ),
                                       ],
                                     ),

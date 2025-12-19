@@ -20,6 +20,7 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
   final List<_CardFields> _cards = [];
   bool _saving = false;
   final DeckRepository _repository = deckRepository;
+  final _scrollController = ScrollController(); // Thêm ScrollController
   bool get _isEditing => widget.deckToEdit != null;
 
   @override
@@ -65,6 +66,7 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
     for (final card in _cards) {
       card.dispose();
     }
+    _scrollController.dispose(); // Hủy ScrollController
     super.dispose();
   }
 
@@ -72,6 +74,18 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
     setState(() {
       _cards.add(_CardFields());
     });
+    // Tự động cuộn xuống dưới cùng sau khi thêm thẻ
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   void _removeCard(int index) {
@@ -147,6 +161,7 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
         ),
       ],
       body: SingleChildScrollView(
+        controller: _scrollController, // Gán controller
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         child: Form(
           key: _formKey,
