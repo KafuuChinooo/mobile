@@ -2,7 +2,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flash_card/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flash_card/Helper/router.dart';
+import 'package:flash_card/helper/router.dart';
 import 'package:flash_card/firebase_options.dart';
 
 void main() async {
@@ -27,13 +27,13 @@ class FlashcardApp extends StatelessWidget {
       builder: (lightDynamic, darkDynamic) => MaterialApp(
         debugShowCheckedModeBanner: false,
         darkTheme: ThemeData(
-          colorSchemeSeed: darkDynamic == null ? const Color(0xFFFFD60A) : null,
+          colorSchemeSeed: darkDynamic != null ? null : const Color(0xFF7233FE),
           colorScheme: darkDynamic,
           brightness: Brightness.dark,
           useMaterial3: true,
         ),
         theme: ThemeData(
-          colorSchemeSeed: lightDynamic == null ? const Color(0xFFFFD60A) : null,
+          colorSchemeSeed: lightDynamic != null ? null : const Color(0xFF7233FE),
           brightness: Brightness.light,
           colorScheme: lightDynamic,
           useMaterial3: true,

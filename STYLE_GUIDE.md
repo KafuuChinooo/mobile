@@ -1,7 +1,7 @@
 
 ## Project Structure
 - Production code lives under `lib/`.
-- Screens/widgets go in `lib/widget/`. Shared helpers (routing, services, utils) go in `lib/Helper/`.
+- Screens/widgets go in `lib/widget/`. Shared helpers (routing, services, utils) go in `lib/helper/`.
 - Every top-level screen must wrap its content with `AppScaffold` so navigation, theming, and the bottom nav stay uniform.
 
 ## Imports & Organization
