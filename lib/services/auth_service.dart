@@ -19,8 +19,10 @@ class AuthService {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
+      print("Login Error: ${e.code} - ${e.message}"); // Log lỗi ra console
       return AuthResult.failure(_mapError(e));
     } catch (e) {
+      print("Login Generic Error: $e"); // Log lỗi chung
       return AuthResult.failure('Đăng nhập thất bại, vui lòng thử lại');
     }
   }
@@ -46,19 +48,25 @@ class AuthService {
       }
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
+      print("SignUp Error: ${e.code} - ${e.message}");
       return AuthResult.failure(_mapError(e));
     } catch (e) {
+      print("SignUp Generic Error: $e");
       return AuthResult.failure('Đăng ký thất bại, vui lòng thử lại');
     }
   }
 
   Future<AuthResult> signInAnon() async {
     try {
+      print("Starting anonymous sign in..."); // Bắt đầu login ẩn danh
       await _auth.signInAnonymously();
+      print("Anonymous sign in success"); // Login ẩn danh thành công
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
+      print("Anon Error: ${e.code} - ${e.message}");
       return AuthResult.failure(_mapError(e));
     } catch (e) {
+      print("Anon Generic Error: $e");
       return AuthResult.failure('Đăng nhập ẩn danh thất bại');
     }
   }

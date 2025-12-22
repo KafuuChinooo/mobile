@@ -102,10 +102,10 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
 
     final cardData = _cards
         .map((card) => DeckCard(
-              front: card.wordController.text.trim(), // Map word -> front
-              back: card.answerController.text.trim(), // Map answer -> back
+              term: card.wordController.text.trim(), // Use term instead of front
+              definition: card.answerController.text.trim(), // Use definition instead of back
             ))
-        .where((entry) => entry.front.isNotEmpty || entry.back.isNotEmpty)
+        .where((entry) => entry.term.isNotEmpty || entry.definition.isNotEmpty)
         .toList();
 
     if (cardData.isEmpty) {
@@ -280,7 +280,7 @@ class _CardFields {
     answerController = TextEditingController(text: answer);
 
   factory _CardFields.fromDeckCard(DeckCard card) {
-    return _CardFields(word: card.front, answer: card.back); // Map front/back -> fields
+    return _CardFields(word: card.term, answer: card.definition); // Use term/definition
   }
 
   void dispose() {

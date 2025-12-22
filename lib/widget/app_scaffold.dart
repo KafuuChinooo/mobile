@@ -1,4 +1,4 @@
-import 'package:flash_card/Helper/router.dart';
+import 'package:flash_card/helper/router.dart';
 import 'package:flash_card/widget/app_bottom_nav.dart';
 import 'package:flutter/material.dart';
 
@@ -13,7 +13,7 @@ class AppScaffold extends StatelessWidget {
   final Widget? floatingActionButton;
   final FloatingActionButtonLocation? floatingActionButtonLocation;
   final List<Widget>? actions;
-  final Color backgroundColor;
+  final Color? backgroundColor;
 
   const AppScaffold({
     super.key,
@@ -27,7 +27,7 @@ class AppScaffold extends StatelessWidget {
     this.floatingActionButton,
     this.floatingActionButtonLocation,
     this.actions,
-    this.backgroundColor = Colors.white,
+    this.backgroundColor,
   });
 
   void _handleBack(BuildContext context) {
@@ -41,18 +41,18 @@ class AppScaffold extends StatelessWidget {
   PreferredSizeWidget? _buildAppBar(BuildContext context) {
     if (!showAppBar) return null;
     return AppBar(
-      backgroundColor: backgroundColor,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       elevation: 0,
       leading: showBackButton
           ? IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
               onPressed: () => _handleBack(context),
             )
           : null,
       title: Text(
         title,
-        style: const TextStyle(
-          color: Colors.black,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
@@ -65,7 +65,7 @@ class AppScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.surface,
       appBar: _buildAppBar(context),
       body: body,
       floatingActionButton: floatingActionButton,

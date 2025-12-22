@@ -19,10 +19,18 @@ class UserProfileService {
   static final UserProfileService instance = UserProfileService._();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  // Fallback to default Firestore instance if specific databaseId fails,
+  // or use instanceFor if you are sure about the database ID.
+  // For debugging, let's try using the default instance first as it's the most common cause of error
+  // when 'flashcard' database doesn't exist or isn't accessible.
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance; 
+  /* 
+  // Old code that might be causing issues if the 'flashcard' database doesn't exist:
   final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(
     app: Firebase.app(),
     databaseId: 'flashcard',
   );
+  */
 
   DocumentReference<Map<String, dynamic>> _userDoc(String uid) =>
       _firestore.collection('users').doc(uid);

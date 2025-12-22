@@ -1,4 +1,4 @@
-import 'package:flash_card/Helper/router.dart';
+import 'package:flash_card/helper/router.dart';
 import 'package:flutter/material.dart';
 
 enum BottomNavItem { home, decks, account }

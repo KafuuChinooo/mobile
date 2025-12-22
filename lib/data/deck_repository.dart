@@ -12,6 +12,7 @@ abstract class DeckRepository {
   Future<void> updateDeck(Deck deck);
   Future<void> deleteDeck(String deckId);
   Future<void> markDeckOpened(String deckId);
+  Future<void> updateDeckProgress(String deckId, double progress, int lastStudiedIndex);
 }
 
 final DeckRepository deckRepository = FirestoreDeckRepository();
@@ -80,6 +81,7 @@ class FirestoreDeckRepository implements DeckRepository {
         tags: deck.tags,
         category: deck.category,
         lastOpenedAt: null,
+        progress: 0.0,
       );
 
       await docRef.set(fullDeck.toJson());
@@ -97,12 +99,22 @@ class FirestoreDeckRepository implements DeckRepository {
 
   @override
   Future<void> updateDeck(Deck deck) async {
-    // TODO: implement update logic
+    try {
+       await _getDecksCollection().doc(deck.id).update(deck.toJson());
+    } catch (e) {
+      print("Error updating deck: $e");
+      rethrow;
+    }
   }
 
   @override
   Future<void> deleteDeck(String deckId) async {
-    // TODO: implement delete logic
+    try {
+      await _getDecksCollection().doc(deckId).delete();
+    } catch (e) {
+      print("Error deleting deck: $e");
+      rethrow;
+    }
   }
 
   @override
@@ -115,6 +127,19 @@ class FirestoreDeckRepository implements DeckRepository {
       });
     } catch (e) {
       print('Error updating last opened: $e');
+    }
+  }
+
+  @override
+  Future<void> updateDeckProgress(String deckId, double progress, int lastStudiedIndex) async {
+    try {
+      await _getDecksCollection().doc(deckId).update({
+        'progress': progress,
+        'last_studied_index': lastStudiedIndex,
+        'last_opened_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error updating progress: $e');
     }
   }
 }

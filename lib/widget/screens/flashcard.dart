@@ -59,6 +59,7 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
   @override
   void initState() {
     super.initState();
+    _currentQuestionIndex = widget.deck.lastStudiedIndex; // Khôi phục vị trí cũ
     _loadCards();
   }
 
@@ -69,6 +70,10 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
         setState(() {
           _cards = cards;
           _isLoading = false;
+          // Kiểm tra index có hợp lệ không (tránh lỗi out of range nếu cards bị xóa bớt)
+          if (_currentQuestionIndex >= _cards.length) {
+            _currentQuestionIndex = 0;
+          }
         });
       }
     } catch (e) {
@@ -77,6 +82,25 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
       }
       print("Error loading cards: $e");
     }
+  }
+
+  Future<void> _saveProgress() async {
+    if (_cards.isEmpty) return;
+    // Tính tiến độ: (index hiện tại) / (tổng số thẻ)
+    // Nếu đang ở thẻ 3 (index 2) của bộ 5 thẻ => hoàn thành 2 thẻ => 2/5 = 40%
+    // Nếu muốn tính là đã học xong thẻ hiện tại luôn thì là (index + 1)/total.
+    // Thường thì "đang học thẻ 3" nghĩa là xong thẻ 1,2 => progress = 2/5.
+    // Tuy nhiên user muốn nhìn thấy 60% khi học tới thẻ 3 (tức là coi như thẻ 3 đang học cũng tính vào progress bar).
+    // Ở đây tôi sẽ lưu index hiện tại để lần sau mở lại đúng chỗ đó.
+    
+    // Tính % để hiển thị ngoài danh sách
+    final progress = (_currentQuestionIndex) / _cards.length; 
+    
+    await deckRepository.updateDeckProgress(
+      widget.deck.id, 
+      progress, 
+      _currentQuestionIndex
+    );
   }
 
   // --- Phương Thức Hỗ Trợ ---
@@ -95,20 +119,65 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
           _controller.flipcard();
           _showAnswer = false;
         }
+        _saveProgress(); // Lưu tiến độ khi back
       }
     });
   }
 
   void _onNextQuestion() {
-    setState(() {
-      if (_currentQuestionIndex < _cards.length - 1) {
+    if (_currentQuestionIndex < _cards.length - 1) {
+      setState(() {
         _currentQuestionIndex++;
         if (_showAnswer) {
           _controller.flipcard();
           _showAnswer = false;
         }
-      }
-    });
+      });
+      _saveProgress(); // Lưu tiến độ tự động khi next
+    } else {
+      // Đã đến card cuối cùng, hiện popup
+      _showCompletionDialog();
+    }
+  }
+
+  void _showCompletionDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Chúc mừng!"),
+          content: const Text("Bạn đã hoàn thành việc học bộ thẻ này."),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Đóng dialog
+                // Reset về thẻ đầu tiên
+                setState(() {
+                  _currentQuestionIndex = 0;
+                  if (_showAnswer) {
+                    _controller.flipcard();
+                    _showAnswer = false;
+                  }
+                });
+                _saveProgress(); // Lưu lại là về 0
+              },
+              child: const Text("Học lại"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Đóng dialog
+                Navigator.of(context).pop(); // Thoát màn hình Learn
+                
+                // Cập nhật tiến độ hoàn thành lên 100% (1.0) và reset index về 0 hoặc giữ nguyên cuối
+                await deckRepository.updateDeckProgress(widget.deck.id, 1.0, 0); 
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7233FE)),
+              child: const Text("Hoàn tất", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // --- Giao Diện ---
@@ -159,6 +228,18 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
           showAnswer: _showAnswer,
         ),
         const Spacer(),
+        // Nút Save & Exit thủ công nếu muốn thoát giữa chừng mà chắc chắn đã lưu
+        Padding(
+          padding: const EdgeInsets.only(bottom: 20.0),
+          child: TextButton.icon(
+            onPressed: () {
+               _saveProgress();
+               Navigator.of(context).pop();
+            },
+            icon: const Icon(Icons.save_alt, color: Colors.grey),
+            label: const Text("Save & Exit", style: TextStyle(color: Colors.grey)),
+          ),
+        )
       ],
     );
   }
@@ -174,6 +255,8 @@ class ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Hiển thị % tiến độ dựa trên thẻ đang học. 
+    // Ví dụ: đang học thẻ 3/5 -> (2 + 1)/5 = 60%
     final progressValue = totalQuestions > 0 ? (currentIndex + 1) / totalQuestions : 0.0;
     final progressPercentage = (progressValue * 100).round();
 
@@ -258,6 +341,8 @@ class CardControllerSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isLastCard = currentQuestionIndex >= (quizQuestionLength - 1);
+    
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -282,13 +367,18 @@ class CardControllerSection extends StatelessWidget {
         ),
         const SizedBox(width: 24),
         ElevatedButton(
-          onPressed: currentQuestionIndex >= (quizQuestionLength - 1) ? null : onNextQuestion,
+          // Luôn enable nút Next kể cả ở card cuối cùng để kích hoạt dialog
+          onPressed: onNextQuestion,
           style: ElevatedButton.styleFrom(
               shape: const CircleBorder(),
-              backgroundColor: const Color(0xFFF3EDFF),
+              backgroundColor: isLastCard ? const Color(0xFF7233FE) : const Color(0xFFF3EDFF), // Đổi màu khi ở card cuối để gây chú ý
               padding: const EdgeInsets.all(12),
               elevation: 0),
-          child: const Icon(Icons.arrow_forward_ios, color: Color(0xFF7233FE), size: 20),
+          child: Icon(
+            isLastCard ? Icons.check : Icons.arrow_forward_ios, // Đổi icon thành Check khi ở card cuối
+            color: isLastCard ? Colors.white : const Color(0xFF7233FE), 
+            size: 20
+          ),
         ),
       ],
     );
