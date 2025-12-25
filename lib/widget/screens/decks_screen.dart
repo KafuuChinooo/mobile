@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flash_card/data/deck_repository.dart';
 import 'package:flash_card/model/deck.dart';
 import 'package:flash_card/widget/app_bottom_nav.dart';
@@ -5,6 +7,7 @@ import 'package:flash_card/widget/app_scaffold.dart';
 import 'package:flash_card/widget/screens/add_deck_screen.dart';
 import 'package:flash_card/widget/screens/flashcard.dart';
 import 'package:flash_card/widget/screens/quiz_screen.dart';
+import 'package:flash_card/services/ai_distractor_service.dart';
 import 'package:flutter/material.dart';
 
 enum _DeckAction { edit, delete }
@@ -30,6 +33,7 @@ class _DecksScreenState extends State<DecksScreen> {
   static const _mutedBackground = Color(0xFFF7F7FB);
 
   final DeckRepository _repository = deckRepository;
+  final AiDistractorService _aiService = AiDistractorService();
   final TextEditingController _searchController = TextEditingController();
   final Set<String> _expandedDeckIds = {};
 
@@ -48,6 +52,7 @@ class _DecksScreenState extends State<DecksScreen> {
 
   @override
   void dispose() {
+    _aiService.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -117,6 +122,9 @@ class _DecksScreenState extends State<DecksScreen> {
       return;
     }
 
+    // Tạo distractors trước khi vào quiz
+    await _prefetchDistractors(deck);
+
     _repository.markDeckOpened(deck.id);
     
     // Map Deck card model to QuizCard model
@@ -124,6 +132,7 @@ class _DecksScreenState extends State<DecksScreen> {
       id: c.id,
       term: c.term,
       definition: c.definition,
+      distractors: c.distractors,
     )).toList();
 
     Navigator.of(context).push(
@@ -134,6 +143,71 @@ class _DecksScreenState extends State<DecksScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _prefetchDistractors(Deck deck) async {
+    final needing = deck.cards.where((c) => (c.distractors?.length ?? 0) < 3).toList();
+    if (needing.isEmpty) return;
+
+    final total = needing.length;
+    final progress = ValueNotifier<double>(0);
+
+    // Start work in the background
+    final work = () async {
+      int processed = 0;
+      const chunkSize = 10;
+      for (var i = 0; i < needing.length; i += chunkSize) {
+        final chunk = needing.sublist(i, min(i + chunkSize, needing.length));
+        try {
+          final result = await _aiService.generateBatch(chunk);
+          for (final card in chunk) {
+            final distractors = result[card.id];
+            if (distractors != null && distractors.length >= 3) {
+              final updated = card.copyWith(distractors: distractors);
+              final idx = deck.cards.indexWhere((c) => c.id == card.id);
+              if (idx != -1) {
+                deck.cards[idx] = updated;
+              }
+              await _repository.updateCardDistractors(deck.id, card.id, distractors);
+            }
+          }
+        } catch (e) {
+          // Ignore errors here; fallback logic in quiz will handle missing distractors.
+        } finally {
+          processed += chunk.length;
+          progress.value = processed / total;
+        }
+      }
+      progress.value = 1.0;
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    }();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ValueListenableBuilder<double>(
+        valueListenable: progress,
+        builder: (context, value, __) {
+          final percent = (value * 100).clamp(0, 100).toInt();
+          return AlertDialog(
+            title: const Text('Đang tạo đáp án nhiễu'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LinearProgressIndicator(value: value.clamp(0.0, 1.0)),
+                const SizedBox(height: 12),
+                Text('$percent%'),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    await work;
+    progress.dispose();
   }
 
   void _handleMenuSelection(BuildContext context, _DeckAction action, Deck deck) async {

@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 
 // Giả lập model Flashcard nếu bạn chưa có model riêng tách biệt
@@ -7,8 +6,14 @@ class QuizCard {
   final String id;
   final String term; // Mặt trước
   final String definition; // Mặt sau
+  final List<String>? distractors;
 
-  QuizCard({required this.id, required this.term, required this.definition});
+  QuizCard({
+    required this.id,
+    required this.term,
+    required this.definition,
+    this.distractors,
+  });
 }
 
 class QuizScreen extends StatefulWidget {
@@ -30,6 +35,7 @@ class _QuizScreenState extends State<QuizScreen> {
   int _score = 0;
   bool _isFinished = false;
   List<Question> _questions = [];
+  String? _selectedAnswer;
 
   @override
   void initState() {
@@ -45,17 +51,26 @@ class _QuizScreenState extends State<QuizScreen> {
     _questions = shuffledCards.map((card) {
       // 1. Đáp án đúng
       final correctAnswer = card.definition;
-      
-      // 2. Tạo danh sách các đáp án sai (Distractors)
-      // Lấy tất cả definition của các thẻ khác
-      final otherDefinitions = widget.cards
-          .where((c) => c.id != card.id)
-          .map((c) => c.definition)
+
+      // 2. Ưu tiên dùng distractors đã chuẩn bị sẵn
+      final precomputed = (card.distractors ?? [])
+          .where((d) => d.trim().isNotEmpty && d.toLowerCase() != correctAnswer.toLowerCase())
+          .toSet()
           .toList();
-      
-      // Trộn và lấy tối đa 3 đáp án sai
-      otherDefinitions.shuffle();
-      final wrongAnswers = otherDefinitions.take(3).toList();
+
+      List<String> wrongAnswers;
+      if (precomputed.length >= 3) {
+        wrongAnswers = precomputed.take(3).toList();
+      } else {
+        // Fallback: lấy đáp án sai từ thẻ khác
+        final otherDefinitions = widget.cards
+            .where((c) => c.id != card.id)
+            .map((c) => c.definition)
+            .where((d) => d.toLowerCase() != correctAnswer.toLowerCase())
+            .toList();
+        otherDefinitions.shuffle();
+        wrongAnswers = otherDefinitions.take(3).toList();
+      }
       
       // 3. Gộp lại thành 4 đáp án và trộn vị trí
       final allOptions = [correctAnswer, ...wrongAnswers];
@@ -70,21 +85,19 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void _answerQuestion(String selectedAnswer) {
+    if (_selectedAnswer != null) return; // chặn double tap khi đang hiển thị feedback
     final currentQuestion = _questions[_currentIndex];
-    
-    if (selectedAnswer == currentQuestion.correctAnswer) {
-      _score++;
-    }
+    final isCorrect = selectedAnswer == currentQuestion.correctAnswer;
 
-    if (_currentIndex < _questions.length - 1) {
-      setState(() {
-        _currentIndex++;
-      });
-    } else {
-      setState(() {
-        _isFinished = true;
-      });
-    }
+    setState(() {
+      _selectedAnswer = selectedAnswer;
+      if (isCorrect) _score++;
+    });
+
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      _goToNextQuestion();
+    });
   }
 
   void _restartQuiz() {
@@ -92,8 +105,22 @@ class _QuizScreenState extends State<QuizScreen> {
       _currentIndex = 0;
       _score = 0;
       _isFinished = false;
+      _selectedAnswer = null;
       _generateQuestions(); // Trộn lại câu hỏi mới
     });
+  }
+
+  void _goToNextQuestion() {
+    if (_currentIndex < _questions.length - 1) {
+      setState(() {
+        _currentIndex++;
+        _selectedAnswer = null;
+      });
+    } else {
+      setState(() {
+        _isFinished = true;
+      });
+    }
   }
 
   @override
@@ -182,32 +209,48 @@ class _QuizScreenState extends State<QuizScreen> {
             const Spacer(),
             
             // Danh sách đáp án
-            ...question.options.map((option) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton(
-                  onPressed: () => _answerQuestion(option),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.black87,
-                    side: BorderSide(color: Colors.grey.shade300),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+            ...question.options.map((option) {
+              final isSelected = _selectedAnswer == option;
+              final showFeedback = _selectedAnswer != null;
+              Color? bg;
+              Color? border;
+              if (showFeedback && isSelected) {
+                final isCorrect = option == question.correctAnswer;
+                bg = isCorrect ? Colors.green[100] : Colors.red[100];
+                border = isCorrect ? Colors.green : Colors.red;
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 56),
+                  child: OutlinedButton(
+                    onPressed: showFeedback ? null : () => _answerQuestion(option),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: bg,
+                      foregroundColor: Colors.black87,
+                      side: BorderSide(color: border ?? Colors.grey.shade300),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                  ),
-                  child: Text(
-                    option,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        option,
+                        textAlign: TextAlign.left,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            )).toList(),
+              );
+            }).toList(),
             const Spacer(),
           ],
         ),

@@ -13,6 +13,7 @@ abstract class DeckRepository {
   Future<void> deleteDeck(String deckId);
   Future<void> markDeckOpened(String deckId);
   Future<void> updateDeckProgress(String deckId, double progress, int lastStudiedIndex);
+  Future<void> updateCardDistractors(String deckId, String cardId, List<String> distractors);
 }
 
 final DeckRepository deckRepository = FirestoreDeckRepository();
@@ -54,7 +55,11 @@ class FirestoreDeckRepository implements DeckRepository {
   Future<List<DeckCard>> fetchCards(String deckId) async {
     try {
       final snapshot = await _getDecksCollection().doc(deckId).collection('cards').get();
-      return snapshot.docs.map((doc) => DeckCard.fromJson(doc.data())).toList();
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = data['id'] ?? doc.id;
+        return DeckCard.fromJson(data);
+      }).toList();
     } catch (e) {
       print('Error fetching cards: $e');
       return [];
@@ -140,6 +145,19 @@ class FirestoreDeckRepository implements DeckRepository {
       });
     } catch (e) {
       print('Error updating progress: $e');
+    }
+  }
+
+  @override
+  Future<void> updateCardDistractors(String deckId, String cardId, List<String> distractors) async {
+    try {
+      await _getDecksCollection()
+          .doc(deckId)
+          .collection('cards')
+          .doc(cardId)
+          .update({'distractors': distractors});
+    } catch (e) {
+      print('Error updating distractors: $e');
     }
   }
 }

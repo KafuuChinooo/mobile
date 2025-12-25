@@ -6,17 +6,35 @@ class DeckCard {
   final String term;
   final String definition;
   final String? imageUrl;
+  final List<String>? distractors;
 
   DeckCard({
     String? id,
     required this.term,
     required this.definition,
     this.imageUrl,
+    this.distractors,
   }) : id = id ?? const Uuid().v4();
 
   // Backward compatibility getters
   String get front => term;
   String get back => definition;
+
+  DeckCard copyWith({
+    String? id,
+    String? term,
+    String? definition,
+    String? imageUrl,
+    List<String>? distractors,
+  }) {
+    return DeckCard(
+      id: id ?? this.id,
+      term: term ?? this.term,
+      definition: definition ?? this.definition,
+      imageUrl: imageUrl ?? this.imageUrl,
+      distractors: distractors ?? this.distractors,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -25,14 +43,22 @@ class DeckCard {
         'front': term, 
         'back': definition,
         'imageUrl': imageUrl,
+        'distractors': distractors,
       };
 
   factory DeckCard.fromJson(Map<String, dynamic> json) {
+    List<String>? parsedDistractors;
+    final rawDistractors = json['distractors'];
+    if (rawDistractors is List) {
+      parsedDistractors = rawDistractors.map((e) => e.toString()).toList();
+    }
+
     return DeckCard(
       id: json['id'] as String?,
       term: (json['term'] ?? json['front'] ?? '') as String,
       definition: (json['definition'] ?? json['back'] ?? '') as String,
       imageUrl: json['imageUrl'] as String?,
+      distractors: parsedDistractors,
     );
   }
 }
