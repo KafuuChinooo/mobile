@@ -192,12 +192,12 @@ class _DecksScreenState extends State<DecksScreen> {
         builder: (context, value, __) {
           final percent = (value * 100).clamp(0, 100).toInt();
           return AlertDialog(
-            title: const Text('Đang tạo đáp án nhiễu'),
+            title: const Text('Đang tạo bộ câu hỏi', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 LinearProgressIndicator(value: value.clamp(0.0, 1.0)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 15),
                 Text('$percent%'),
               ],
             ),
@@ -383,7 +383,7 @@ class _DecksScreenState extends State<DecksScreen> {
                         Text(
                           deck.title,
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -428,7 +428,7 @@ class _DecksScreenState extends State<DecksScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: const Text('Test'),
+                      child: const Text('Test', style: TextStyle(color: _accent, fontSize: 16)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -440,7 +440,7 @@ class _DecksScreenState extends State<DecksScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: () => _openFlashcard(deck),
-                      child: const Text('Learn'),
+                      child: const Text('Learn', style: TextStyle(color: Colors.white, fontSize: 16)),
                     ),
                   ),
                 ],

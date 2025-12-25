@@ -645,7 +645,7 @@ class _DeckCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 22,
+                fontSize: 18,
                 color: Color(0xFF7233FE),
               ),
             ),
@@ -654,7 +654,7 @@ class _DeckCard extends StatelessWidget {
               subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.black, fontSize: 16,),
+              style: const TextStyle(color: Colors.black, fontSize: 14,),
             ),
             const Spacer(),
             Row(

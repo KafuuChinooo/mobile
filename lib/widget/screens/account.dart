@@ -3,6 +3,7 @@ import 'package:flash_card/services/auth_service.dart';
 import 'package:flash_card/services/user_profile_service.dart';
 import 'package:flash_card/widget/app_bottom_nav.dart';
 import 'package:flash_card/widget/app_scaffold.dart';
+import 'package:flash_card/widget/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -54,7 +55,7 @@ class _AccountScreenState extends State<AccountScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Không tải được thông tin: $e';
+        _error = 'Failed to load information: $e';
         _loading = false;
       });
     }
@@ -64,7 +65,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập username')),
+        const SnackBar(content: Text('Please enter a username')),
       );
       return;
     }
@@ -77,12 +78,12 @@ class _AccountScreenState extends State<AccountScreen> {
       await _loadProfile();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cập nhật username thành công')),
+        const SnackBar(content: Text('Username updated')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cập nhật thất bại: $e')),
+        SnackBar(content: Text('Failed to update: $e')),
       );
     } finally {
       if (mounted) {
@@ -106,93 +107,105 @@ class _AccountScreenState extends State<AccountScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-              child: Column(
-                children: <Widget>[
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.black,
-                        width: 1.0,
-                      ),
-                    ),
-                    child: const CircleAvatar(
-                      radius: 50,
-                      backgroundImage: AssetImage('images/avatar.jpg'),
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.grey.shade300,
+                      width: 2.0,
                     ),
                   ),
-                  const SizedBox(height: 15),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        profile?.displayName ?? 'Learner',
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      IconButton(
-                        icon: const Icon(Icons.edit, size: 20, color: Colors.black54),
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        onPressed: _showEditUsernameDialog,
-                      ),
-                    ],
+                  child: const CircleAvatar(
+                    radius: 40,
+                    backgroundImage: AssetImage('images/avatar.jpg'),
                   ),
-                  if ((profile?.email ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 6),
+                ),
+                const SizedBox(height: 15),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      profile!.email!,
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-                  ],
-                  const SizedBox(height: 30),
-                  _buildOptionButton(
-                    icon: Icons.notifications_none,
-                    text: 'Activities',
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 40),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        await AuthService.instance.signOut();
-                        if (!context.mounted) return;
-                        Navigator.of(context).pushNamedAndRemoveUntil(
-                          AppRouter.login,
-                          (route) => false,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor.withOpacity(0.1),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        'Log out',
-                        style: TextStyle(
-                          color: primaryColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      profile?.displayName ?? 'Learner',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 22, color: Colors.black54),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: _showEditUsernameDialog,
+                    ),
                   ],
-                ],
+                ),
+                const SizedBox(height: 4),
+                if ((profile?.email ?? '').isNotEmpty)
+                  Text(
+                    profile!.email!,
+                    style: const TextStyle(color: Colors.black54, fontSize: 16),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 30),
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade300)),
+              leading: const Icon(Icons.settings_outlined, size: 28),
+              title: const Text('Settings', style: TextStyle(fontSize: 18)),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () async {
+                  await AuthService.instance.signOut();
+                  if (!context.mounted) return;
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    AppRouter.login,
+                        (route) => false,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor.withOpacity(0.1),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  'Log out',
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -205,77 +218,45 @@ class _AccountScreenState extends State<AccountScreen> {
         return StatefulBuilder(
           builder: (context, setLocalState) {
             return AlertDialog(
-              title: const Text('Đổi username'),
+              title: const Text('Change username'),
               content: TextField(
                 controller: _nameController,
                 decoration: const InputDecoration(
-                  hintText: 'Nhập username mới',
+                  hintText: 'Enter new username',
                   border: OutlineInputBorder(),
                 ),
               ),
               actions: [
                 TextButton(
                   onPressed: localSaving ? null : () => Navigator.of(context).pop(),
-                  child: const Text('Hủy'),
+                  child: const Text('Cancel'),
                 ),
                 ElevatedButton(
                   onPressed: localSaving
                       ? null
                       : () async {
-                          setLocalState(() => localSaving = true);
-                          await _saveName();
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                          }
-                        },
+                    setLocalState(() => localSaving = true);
+                    await _saveName();
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
                   child: localSaving
                       ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation(Colors.white),
-                          ),
-                        )
-                      : const Text('Lưu'),
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                    ),
+                  )
+                      : const Text('Save'),
                 ),
               ],
             );
           },
         );
       },
-    );
-  }
-
-  Widget _buildOptionButton({
-    required IconData icon,
-    required String text,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black, width: 1),
-        ),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, color: Colors.black, size: 28),
-            const SizedBox(width: 15),
-            Text(
-              text,
-              style: const TextStyle(
-                fontSize: 18,
-                color: Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
