@@ -54,7 +54,7 @@ class _AccountScreenState extends State<AccountScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Không tải được thông tin: $e';
+        _error = 'Could not load profile: $e';
         _loading = false;
       });
     }
@@ -64,7 +64,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập username')),
+        const SnackBar(content: Text('Please enter a username')),
       );
       return;
     }
@@ -77,12 +77,12 @@ class _AccountScreenState extends State<AccountScreen> {
       await _loadProfile();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cập nhật username thành công')),
+        const SnackBar(content: Text('Username updated successfully')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cập nhật thất bại: $e')),
+        SnackBar(content: Text('Update failed: $e')),
       );
     } finally {
       if (mounted) {
@@ -205,18 +205,18 @@ class _AccountScreenState extends State<AccountScreen> {
         return StatefulBuilder(
           builder: (context, setLocalState) {
             return AlertDialog(
-              title: const Text('Đổi username'),
+              title: const Text('Change username'),
               content: TextField(
                 controller: _nameController,
                 decoration: const InputDecoration(
-                  hintText: 'Nhập username mới',
+                  hintText: 'Enter a new username',
                   border: OutlineInputBorder(),
                 ),
               ),
               actions: [
                 TextButton(
                   onPressed: localSaving ? null : () => Navigator.of(context).pop(),
-                  child: const Text('Hủy'),
+                  child: const Text('Cancel'),
                 ),
                 ElevatedButton(
                   onPressed: localSaving
@@ -237,7 +237,7 @@ class _AccountScreenState extends State<AccountScreen> {
                             valueColor: AlwaysStoppedAnimation(Colors.white),
                           ),
                         )
-                      : const Text('Lưu'),
+                      : const Text('Save'),
                 ),
               ],
             );

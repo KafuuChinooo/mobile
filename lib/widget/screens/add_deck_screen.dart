@@ -3,9 +3,9 @@ import 'package:flash_card/model/deck.dart';
 import 'package:flash_card/widget/app_scaffold.dart';
 import 'package:flutter/material.dart';
 
-// Màn hình này có thể dùng cho cả Thêm Mới và Chỉnh Sửa
+// Screen for both creating and editing a deck.
 class AddDeckScreen extends StatefulWidget {
-  final Deck? deckToEdit; // Biến này chứa deck cần sửa, nếu là null thì là Thêm Mới
+  final Deck? deckToEdit;
 
   const AddDeckScreen({super.key, this.deckToEdit});
 
@@ -20,7 +20,8 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
   final List<_CardFields> _cards = [];
   bool _saving = false;
   final DeckRepository _repository = deckRepository;
-  final _scrollController = ScrollController(); // Thêm ScrollController
+  final _scrollController = ScrollController();
+
   bool get _isEditing => widget.deckToEdit != null;
 
   @override
@@ -29,18 +30,15 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
     if (_isEditing) {
       _loadExistingData();
     } else {
-      // Nếu thêm mới, tạo 2 card rỗng
       _addCard();
       _addCard();
     }
   }
 
   Future<void> _loadExistingData() async {
-    // Điền thông tin cơ bản
     _titleController.text = widget.deckToEdit!.title;
     _descriptionController.text = widget.deckToEdit!.description;
 
-    // Tải danh sách card từ sub-collection
     try {
       final cards = await _repository.fetchCards(widget.deckToEdit!.id);
       if (!mounted) return;
@@ -53,7 +51,7 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
       print("Error loading cards for edit: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi khi tải danh sách thẻ: $e')),
+          SnackBar(content: Text('Error loading cards: $e')),
         );
       }
     }
@@ -66,7 +64,7 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
     for (final card in _cards) {
       card.dispose();
     }
-    _scrollController.dispose(); // Hủy ScrollController
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -74,7 +72,6 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
     setState(() {
       _cards.add(_CardFields());
     });
-    // Tự động cuộn xuống dưới cùng sau khi thêm thẻ
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
@@ -89,7 +86,7 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
   }
 
   void _removeCard(int index) {
-    if (_cards.length <= 1 && !_isEditing) return; // Giữ ít nhất 1 card nếu thêm mới
+    if (_cards.length <= 1 && !_isEditing) return; // Keep at least one card for new decks
     setState(() {
       _cards.removeAt(index).dispose();
     });
@@ -102,21 +99,21 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
 
     final cardData = _cards
         .map((card) => DeckCard(
-              term: card.wordController.text.trim(), // Use term instead of front
-              definition: card.answerController.text.trim(), // Use definition instead of back
+              term: card.wordController.text.trim(),
+              definition: card.answerController.text.trim(),
             ))
         .where((entry) => entry.term.isNotEmpty || entry.definition.isNotEmpty)
         .toList();
 
     if (cardData.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng thêm ít nhất một thẻ')),
+        const SnackBar(content: Text('Please add at least one card')),
       );
       return;
     }
 
     setState(() => _saving = true);
-    
+
     final deckToSave = Deck(
       id: _isEditing ? widget.deckToEdit!.id : '',
       title: _titleController.text.trim(),
@@ -135,13 +132,13 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isEditing ? 'Đã cập nhật bộ thẻ' : 'Đã lưu bộ thẻ')),
+        SnackBar(content: Text(_isEditing ? 'Deck updated' : 'Deck saved')),
       );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi khi lưu: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Error saving: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -161,7 +158,7 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
         ),
       ],
       body: SingleChildScrollView(
-        controller: _scrollController, // Gán controller
+        controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         child: Form(
           key: _formKey,
@@ -171,7 +168,7 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
               _LabeledField(
                 label: 'Title',
                 controller: _titleController,
-                validator: (value) => (value == null || value.trim().isEmpty) ? 'Vui lòng nhập tiêu đề' : null,
+                validator: (value) => (value == null || value.trim().isEmpty) ? 'Please enter a title' : null,
               ),
               const SizedBox(height: 16),
               _LabeledField(
@@ -229,12 +226,20 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
                 ),
                 TextFormField(
                   controller: card.wordController,
-                  decoration: const InputDecoration(labelText: 'Words', labelStyle: TextStyle(color: Colors.black), border: UnderlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Term',
+                    labelStyle: TextStyle(color: Colors.black),
+                    border: UnderlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: card.answerController,
-                  decoration: const InputDecoration(labelText: 'Answer', labelStyle: TextStyle(color: Colors.black), border: UnderlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Definition',
+                    labelStyle: TextStyle(color: Colors.black),
+                    border: UnderlineInputBorder(),
+                  ),
                 ),
               ],
             ),
@@ -266,7 +271,12 @@ class _LabeledField extends StatelessWidget {
       controller: controller,
       maxLines: maxLines,
       validator: validator,
-      decoration: InputDecoration(labelText: label, labelStyle: const TextStyle(color: Colors.black), hintText: hintText, border: const UnderlineInputBorder()),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.black),
+        hintText: hintText,
+        border: const UnderlineInputBorder(),
+      ),
     );
   }
 }
@@ -275,12 +285,12 @@ class _CardFields {
   final TextEditingController wordController;
   final TextEditingController answerController;
 
-  _CardFields({String? word, String? answer}) : 
-    wordController = TextEditingController(text: word),
-    answerController = TextEditingController(text: answer);
+  _CardFields({String? word, String? answer})
+      : wordController = TextEditingController(text: word),
+        answerController = TextEditingController(text: answer);
 
   factory _CardFields.fromDeckCard(DeckCard card) {
-    return _CardFields(word: card.term, answer: card.definition); // Use term/definition
+    return _CardFields(word: card.term, answer: card.definition);
   }
 
   void dispose() {

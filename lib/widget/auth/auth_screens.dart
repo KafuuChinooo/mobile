@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      _showError(context, 'Vui lòng nhập email để đặt lại mật khẩu');
+      _showError(context, 'Please enter an email to reset your password');
       return;
     }
 
@@ -53,9 +53,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _loading = false);
 
     if (result.ok) {
-      _showSuccess(context, result.message ?? 'Email đặt lại mật khẩu đã được gửi');
+      _showSuccess(context, result.message ?? 'Password reset email has been sent.');
     } else {
-      _showError(context, result.message ?? 'Gửi email thất bại');
+      _showError(context, result.message ?? 'Failed to send reset email.');
     }
   }
 
@@ -132,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: EdgeInsets.zero,
                     textStyle: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  child: const Text('Forget password ?'),
+                  child: const Text('Forgot password?'),
                 ),
               ),
               const SizedBox(height: 24),
@@ -146,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         final password = _passwordController.text;
 
                         if (email.isEmpty || password.isEmpty) {
-                          _showError(context, 'Vui lòng nhập đầy đủ email và password');
+                          _showError(context, 'Please enter both email and password');
                           return;
                         }
 
@@ -160,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (result.ok) {
                           Navigator.of(context).pushReplacementNamed(AppRouter.home);
                         } else {
-                          _showError(context, result.message ?? 'Đăng nhập thất bại');
+                          _showError(context, result.message ?? 'Login failed');
                         }
                       },
               ),
@@ -200,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     foregroundColor: Colors.black,
                   ),
                   child: const Text(
-                    "Don't have an account ? Sign up",
+                    "Don't have an account? Sign up",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -239,7 +239,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+    return RegExp(r'^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$').hasMatch(email);
   }
 
   @override
@@ -335,21 +335,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         final confirm = _confirmController.text;
 
                         if (username.isEmpty) {
-                          _showError(context, 'Vui lòng nhập username');
+                          _showError(context, 'Please enter a username');
                           return;
                         }
                         if (!_isValidEmail(email)) {
-                          _showError(context, 'Vui lòng nhập email hợp lệ');
+                          _showError(context, 'Please enter a valid email');
                           return;
                         }
 
                         if (password != confirm) {
-                          _showError(context, 'Vui lòng nhập mật khẩu giống nhau');
+                          _showError(context, 'Passwords do not match');
                           return;
                         }
 
                         if (password.isEmpty) {
-                          _showError(context, 'Vui lòng nhập mật khẩu');
+                          _showError(context, 'Please enter a password');
                           return;
                         }
 
@@ -364,7 +364,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         if (result.ok) {
                           Navigator.of(context).pushReplacementNamed(AppRouter.home);
                         } else {
-                          _showError(context, result.message ?? 'Đăng ký thất bại');
+                          _showError(context, result.message ?? 'Sign up failed');
                         }
                       },
               ),
@@ -404,7 +404,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     foregroundColor: Colors.black,
                   ),
                   child: const Text(
-                    'Already have an account ? Login',
+                    'Already have an account? Login',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -448,8 +448,7 @@ class _AuthTextField extends StatelessWidget {
         suffixIcon: suffix,
         hintText: hint,
         filled: true,
-        fillColor: const Color(0xFFF7F7F7),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        fillColor: Colors.grey.shade100,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -461,13 +460,13 @@ class _AuthTextField extends StatelessWidget {
 
 class _PrimaryButton extends StatelessWidget {
   final String label;
-  final bool loading;
   final VoidCallback? onPressed;
+  final bool loading;
 
   const _PrimaryButton({
     required this.label,
-    required this.loading,
     required this.onPressed,
+    required this.loading,
   });
 
   @override
@@ -479,24 +478,25 @@ class _PrimaryButton extends StatelessWidget {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF7B61FF),
-          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
         ),
         child: loading
             ? const SizedBox(
-                height: 24,
-                width: 24,
+                width: 22,
+                height: 22,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                  strokeWidth: 2.4,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
             : Text(
                 label,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
       ),
     );
@@ -506,25 +506,36 @@ class _PrimaryButton extends StatelessWidget {
 class _GoogleButton extends StatelessWidget {
   final VoidCallback? onPressed;
 
-  const _GoogleButton({this.onPressed});
+  const _GoogleButton({required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 52,
-      child: OutlinedButton(
+      child: ElevatedButton(
         onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.black,
-          side: const BorderSide(color: Colors.black12),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
+            side: const BorderSide(color: Colors.black12),
           ),
+          elevation: 0,
         ),
-        child: const Text(
-          'Continue as guest',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.lightbulb_outline, color: Colors.black, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Continue as guest',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -537,16 +548,26 @@ class _ContinueDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
-        Expanded(child: Divider(color: Colors.black26)),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text(
-            'Or continue with',
-            style: TextStyle(color: Colors.black54),
+      children: [
+        Expanded(
+          child: Container(
+            height: 1,
+            color: Colors.grey.shade300,
           ),
         ),
-        Expanded(child: Divider(color: Colors.black26)),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text(
+            'or continue with',
+            style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: Colors.grey.shade300,
+          ),
+        ),
       ],
     );
   }

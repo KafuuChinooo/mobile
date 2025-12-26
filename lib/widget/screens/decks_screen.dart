@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flash_card/data/deck_repository.dart';
 import 'package:flash_card/model/deck.dart';
 import 'package:flash_card/widget/app_bottom_nav.dart';
@@ -8,6 +6,7 @@ import 'package:flash_card/widget/screens/add_deck_screen.dart';
 import 'package:flash_card/widget/screens/flashcard.dart';
 import 'package:flash_card/widget/screens/quiz_screen.dart';
 import 'package:flash_card/services/ai_distractor_service.dart';
+import 'package:flash_card/services/quiz_prep_service.dart';
 import 'package:flutter/material.dart';
 
 enum _DeckAction { edit, delete }
@@ -17,12 +16,16 @@ enum _DeckListTab { created, completed }
 class DecksScreen extends StatefulWidget {
   final bool showBottomNav;
   final ValueChanged<BottomNavItem>? onNavItemSelected;
+  final DeckRepository repository;
+  final QuizPrepService? quizPrepService;
 
-  const DecksScreen({
+  DecksScreen({
     super.key,
     this.showBottomNav = true,
     this.onNavItemSelected,
-  });
+    DeckRepository? repository,
+    this.quizPrepService,
+  }) : repository = repository ?? deckRepository;
 
   @override
   State<DecksScreen> createState() => _DecksScreenState();
@@ -32,8 +35,9 @@ class _DecksScreenState extends State<DecksScreen> {
   static const _accent = Color(0xFF7D5CFA);
   static const _mutedBackground = Color(0xFFF7F7FB);
 
-  final DeckRepository _repository = deckRepository;
-  final AiDistractorService _aiService = AiDistractorService();
+  late final DeckRepository _repository;
+  late final QuizPrepService _quizPrepService;
+  AiDistractorService? _ownedAiService;
   final TextEditingController _searchController = TextEditingController();
   final Set<String> _expandedDeckIds = {};
 
@@ -41,9 +45,20 @@ class _DecksScreenState extends State<DecksScreen> {
   bool _loading = true;
   _DeckListTab _activeTab = _DeckListTab.created;
 
+  QuizPrepService _buildDefaultQuizPrepService() {
+    final ai = AiDistractorService();
+    _ownedAiService = ai;
+    return QuizPrepService(
+      repository: _repository,
+      distractorProvider: ai,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    _repository = widget.repository;
+    _quizPrepService = widget.quizPrepService ?? _buildDefaultQuizPrepService();
     _searchController.addListener(() {
       setState(() {});
     });
@@ -52,7 +67,7 @@ class _DecksScreenState extends State<DecksScreen> {
 
   @override
   void dispose() {
-    _aiService.dispose();
+    _ownedAiService?.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -102,89 +117,8 @@ class _DecksScreenState extends State<DecksScreen> {
   }
 
   Future<void> _openQuiz(Deck deck) async {
-    // Nếu danh sách cards rỗng (do fetchDecks chỉ lấy thông tin cơ bản), cần tải cards trước
-    if (deck.cards.isEmpty && deck.cardCount > 0) {
-      try {
-        final loadedCards = await _repository.fetchCards(deck.id);
-        deck.cards = loadedCards;
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải thẻ: $e')),
-        );
-        return;
-      }
-    }
-
-    if (deck.cards.length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cần ít nhất 4 thẻ để bắt đầu kiểm tra!')),
-      );
-      return;
-    }
-
-    // Tạo distractors trước khi vào quiz
-    await _prefetchDistractors(deck);
-
-    _repository.markDeckOpened(deck.id);
-    
-    // Map Deck card model to QuizCard model
-    final quizCards = deck.cards.map((c) => QuizCard(
-      id: c.id,
-      term: c.term,
-      definition: c.definition,
-      distractors: c.distractors,
-    )).toList();
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => QuizScreen(
-          deckName: deck.title,
-          cards: quizCards,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _prefetchDistractors(Deck deck) async {
-    final needing = deck.cards.where((c) => (c.distractors?.length ?? 0) < 3).toList();
-    if (needing.isEmpty) return;
-
-    final total = needing.length;
     final progress = ValueNotifier<double>(0);
-
-    // Start work in the background
-    final work = () async {
-      int processed = 0;
-      const chunkSize = 10;
-      for (var i = 0; i < needing.length; i += chunkSize) {
-        final chunk = needing.sublist(i, min(i + chunkSize, needing.length));
-        try {
-          final result = await _aiService.generateBatch(chunk);
-          for (final card in chunk) {
-            final distractors = result[card.id];
-            if (distractors != null && distractors.length >= 3) {
-              final updated = card.copyWith(distractors: distractors);
-              final idx = deck.cards.indexWhere((c) => c.id == card.id);
-              if (idx != -1) {
-                deck.cards[idx] = updated;
-              }
-              await _repository.updateCardDistractors(deck.id, card.id, distractors);
-            }
-          }
-        } catch (e) {
-          // Ignore errors here; fallback logic in quiz will handle missing distractors.
-        } finally {
-          processed += chunk.length;
-          progress.value = processed / total;
-        }
-      }
-      progress.value = 1.0;
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-    }();
-
-    await showDialog(
+    final dialog = showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => ValueListenableBuilder<double>(
@@ -192,7 +126,7 @@ class _DecksScreenState extends State<DecksScreen> {
         builder: (context, value, __) {
           final percent = (value * 100).clamp(0, 100).toInt();
           return AlertDialog(
-            title: const Text('Đang tạo đáp án nhiễu'),
+            title: const Text('Preparing questions'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -206,8 +140,46 @@ class _DecksScreenState extends State<DecksScreen> {
       ),
     );
 
-    await work;
-    progress.dispose();
+    List<DeckCard> preparedCards;
+    try {
+      preparedCards = await _quizPrepService.prepare(
+        deck,
+        onProgress: (v) => progress.value = v,
+      );
+    } on QuizPrepException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+      if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
+      await dialog;
+      return;
+    } catch (e) {
+      if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Quiz preparation failed: $e')));
+      }
+      if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
+      await dialog;
+      return;
+    } finally {
+      progress.dispose();
+    }
+
+    if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
+    await dialog;
+
+    if (!mounted) return;
+
+    deck.cards = preparedCards;
+    _repository.markDeckOpened(deck.id);
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => QuizScreen(
+          deckName: deck.title,
+          cards: preparedCards,
+        ),
+      ),
+    );
   }
 
   void _handleMenuSelection(BuildContext context, _DeckAction action, Deck deck) async {
@@ -216,11 +188,11 @@ class _DecksScreenState extends State<DecksScreen> {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Xóa bộ thẻ?'),
-            content: const Text('Bạn có chắc chắn muốn xóa bộ thẻ này không?'),
+            title: const Text('Delete deck?'),
+            content: const Text('Are you sure you want to delete this deck?'),
             actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Hủy')),
-              TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Xóa')),
+              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
             ],
           ),
         );
@@ -229,12 +201,11 @@ class _DecksScreenState extends State<DecksScreen> {
           try {
             await _repository.deleteDeck(deck.id);
             if (!mounted) return;
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa bộ thẻ')));
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deck deleted')));
             await _loadDecks();
           } catch (e) {
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi xóa: $e')));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
           }
         }
         break;
@@ -398,8 +369,8 @@ class _DecksScreenState extends State<DecksScreen> {
                   PopupMenuButton<_DeckAction>(
                     onSelected: (action) => _handleMenuSelection(context, action, deck),
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: _DeckAction.edit, child: Text('Chỉnh sửa')),
-                      PopupMenuItem(value: _DeckAction.delete, child: Text('Xóa')),
+                      PopupMenuItem(value: _DeckAction.edit, child: Text('Chinh sua')),
+                      PopupMenuItem(value: _DeckAction.delete, child: Text('Delete')),
                     ],
                     child: const Icon(Icons.more_vert, color: Colors.black54),
                   ),

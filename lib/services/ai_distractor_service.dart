@@ -3,14 +3,17 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:flash_card/model/deck.dart';
+import 'package:flash_card/services/distractor_provider.dart';
 
 /// Quick Gemini client for generating distractors. Hardcoded key is for demo only.
-class AiDistractorService {
-  AiDistractorService({http.Client? client}) : _client = client ?? http.Client();
+class AiDistractorService implements DistractorProvider {
+  AiDistractorService({http.Client? client, String? model})
+      : _client = client ?? http.Client(),
+        // Default to the free tier model. Can be overridden via constructor.
+        _model = model ?? 'gemini-2.5-flash-lite';
 
   static const String _apiKey = 'AIzaSyAFUztKCdx1fVCHW8DanryPeaArP09jwyw';
-  static const String _model = 'gemini-1.5-flash-latest';
-
+  final String _model;
   final http.Client _client;
 
   Future<List<String>> generate({
@@ -20,14 +23,18 @@ class AiDistractorService {
     _assertKey();
 
     final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
+      'https://generativelanguage.googleapis.com/v1/models/$_model:generateContent?key=$_apiKey',
     );
 
     final prompt = '''
-Generate exactly 3 Vietnamese distractors for a multiple-choice flashcard.
+You read all questions and correct answers before generating. Produce exactly 3 plausible distractors for this multiple-choice flashcard.
 Term: "$term"
 Correct answer: "$answer"
-Rules: read and consider the context of the full deck, produce concise and plausible distractors, unique, and not equal or substring of the correct answer.
+Rules:
+- Keep distractors in the same language as the term/answer.
+- Make them relevant to the concept, similar in length to the correct answer, and challenging but still plausible.
+- They must be factually correct on their own, but not the correct answer for this term.
+- Must be unique and not equal to or a substring/superstring of the correct answer.
 Return JSON only: {"distractors":["d1","d2","d3"]}''';
 
     final response = await _client.post(
@@ -45,7 +52,10 @@ Return JSON only: {"distractors":["d1","d2","d3"]}''';
     );
 
     if (response.statusCode != 200) {
-      throw Exception('AI error ${response.statusCode}: ${response.body}');
+      throw Exception(
+        'AI error ${response.statusCode}: ${response.body}. '
+        'Model: $_model. Try gemini-pro or gemini-1.5-pro-latest if 404 persists.',
+      );
     }
 
     final decoded = jsonDecode(response.body);
@@ -59,17 +69,19 @@ Return JSON only: {"distractors":["d1","d2","d3"]}''';
 
   /// Batch mode: generate distractors for many cards in one call.
   /// Returns a map cardId -> distractors.
+  @override
   Future<Map<String, List<String>>> generateBatch(List<DeckCard> cards) async {
     _assertKey();
     if (cards.isEmpty) return {};
 
     final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
+      'https://generativelanguage.googleapis.com/v1/models/$_model:generateContent?key=$_apiKey',
     );
 
     final buffer = StringBuffer();
-    buffer.writeln('You are a generator of Vietnamese distractors. Read and consider all items (full deck context) before generating.');
-    buffer.writeln('For each item, return exactly 3 distractors.');
+    buffer.writeln('You are a generator of distractors. Read and consider ALL items (questions and answers) before generating.');
+    buffer.writeln('For each item, return exactly 3 distractors in the same language as the term/answer.');
+    buffer.writeln('Make distractors relevant, similar in length to the correct answer, challenging but plausible, and factually correct on their own.');
     buffer.writeln('Items:');
     for (final card in cards) {
       buffer.writeln('- id:"${card.id}", term:"${card.term}", answer:"${card.definition}"');
@@ -93,7 +105,10 @@ Return JSON only: {"distractors":["d1","d2","d3"]}''';
     );
 
     if (response.statusCode != 200) {
-      throw Exception('AI error ${response.statusCode}: ${response.body}');
+      throw Exception(
+        'AI error ${response.statusCode}: ${response.body}. '
+        'Model: $_model. Try gemini-pro or gemini-1.5-pro-latest if 404 persists.',
+      );
     }
 
     final decoded = jsonDecode(response.body);
@@ -102,12 +117,7 @@ Return JSON only: {"distractors":["d1","d2","d3"]}''';
       throw Exception('Empty AI response: $decoded');
     }
 
-    List<dynamic> parsedArray;
-    try {
-      parsedArray = jsonDecode(rawText) as List<dynamic>;
-    } catch (_) {
-      throw FormatException('AI batch response is not valid JSON: $rawText');
-    }
+    final parsedArray = _decodeJsonArray(rawText);
 
     final result = <String, List<String>>{};
     for (final item in parsedArray) {
@@ -138,9 +148,9 @@ Return JSON only: {"distractors":["d1","d2","d3"]}''';
   List<String> _parseDistractors(String rawText, String answer) {
     late final Map<String, dynamic> parsedJson;
     try {
-      parsedJson = jsonDecode(rawText) as Map<String, dynamic>;
-    } catch (_) {
-      throw FormatException('AI response is not valid JSON: $rawText');
+      parsedJson = _decodeJsonObject(rawText);
+    } on FormatException catch (e) {
+      throw FormatException('AI response is not valid JSON: ${e.message}');
     }
 
     final rawList = (parsedJson['distractors'] as List?)?.map((e) => e.toString()).toList() ?? [];
@@ -169,5 +179,53 @@ Return JSON only: {"distractors":["d1","d2","d3"]}''';
     final la = a.toLowerCase();
     final lb = b.toLowerCase();
     return la == lb || la.contains(lb) || lb.contains(la);
+  }
+
+  List<dynamic> _decodeJsonArray(String rawText) {
+    final sanitized = _sanitizeJsonLike(rawText, preferArray: true);
+    try {
+      final decoded = jsonDecode(sanitized);
+      if (decoded is List) return decoded;
+    } catch (_) {
+      // Fall through to throw below.
+    }
+    throw FormatException('Could not parse array payload. Snippet: ${_shorten(rawText)}');
+  }
+
+  Map<String, dynamic> _decodeJsonObject(String rawText) {
+    final sanitized = _sanitizeJsonLike(rawText, preferArray: false);
+    try {
+      final decoded = jsonDecode(sanitized);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {
+      // Fall through to throw below.
+    }
+    throw FormatException('Could not parse object payload. Snippet: ${_shorten(rawText)}');
+  }
+
+  String _sanitizeJsonLike(String rawText, {required bool preferArray}) {
+    // Handle fenced code blocks and extra explanations from the model.
+    final fenced = RegExp(r'```(?:json)?\s*([\s\S]*?)```', multiLine: true);
+    final fenceMatch = fenced.firstMatch(rawText);
+    var text = (fenceMatch != null ? fenceMatch.group(1) : rawText) ?? rawText;
+    text = text.trim();
+
+    // If the model prepends explanations, slice out the JSON-looking part.
+    final start = preferArray ? text.indexOf('[') : text.indexOf('{');
+    final end = preferArray ? text.lastIndexOf(']') : text.lastIndexOf('}');
+    if (start != -1 && end > start) {
+      text = text.substring(start, end + 1);
+    }
+
+    // Remove trailing commas that Gemini sometimes leaves behind.
+    final trailingCommaPattern = RegExp(r',(\s*[}\]])');
+    text = text.replaceAllMapped(trailingCommaPattern, (m) => m.group(1)!);
+
+    return text;
+  }
+
+  String _shorten(String input, {int max = 160}) {
+    if (input.length <= max) return input;
+    return '${input.substring(0, max)}...';
   }
 }

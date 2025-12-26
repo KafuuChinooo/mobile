@@ -9,7 +9,7 @@ import 'package:flash_card/widget/screens/add_deck_screen.dart';
 import 'package:flash_card/widget/screens/flashcard.dart';
 import 'package:flutter/material.dart';
 
-//Quản lý dữ liệu
+// Data management dashboard
 class HomeDashboardScreen extends StatefulWidget {
   final bool showBottomNav;
   final ValueChanged<BottomNavItem>? onNavItemSelected;
@@ -27,7 +27,7 @@ class HomeDashboardScreen extends StatefulWidget {
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   final DeckRepository _deckRepository = deckRepository;
 
-  //Data tiến trình hịc hằng ngày (Streak, lịch sử check-in)
+  // Daily progress data (streaks, check-ins)
   DailyProgressSnapshot? _progress;
   bool _loadingProgress = true;
   String? _progressError;
@@ -46,7 +46,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     _loadProfile();
   }
 
-  //LOGIC XỬ LÝ DỮ LIỆU
+  // Data loading logic
   Future<void> _refreshAll() async {
     await Future.wait([
       _loadProgress(),
@@ -164,7 +164,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     }
   }
 
-  //GIAO DIỆN CHÍNH
+  // Main UI
   @override
   Widget build(BuildContext context) {
     const accent = Color(0xFF7233FE);
@@ -184,7 +184,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           padding: const EdgeInsets.only(bottom: 24.0),
           child: Column(
             children: [
-              //Widget chứa nền tím, thông tin user, streak
+              // Hero panel with background, user info, and streak
               _DashboardHeader(
                 accent: accent,
                 secondaryAccent: secondaryAccent,
@@ -436,7 +436,7 @@ class _DayCircle extends StatelessWidget {
   }
 }
 
-//Widget hiển thị con số thống kê
+// Widget showing a single stat number
 class _StreakStatsCard extends StatelessWidget {
   final DailyProgressSnapshot progress;
 
@@ -512,7 +512,7 @@ class _StatItem extends StatelessWidget {
   }
 }
 
-//Widget hiển thị thông tin tạo deck nếu là người dùng mới
+// Widget showing create-deck prompt for new users
 class _RecentDeckSection extends StatelessWidget {
   final List<Deck> decks;
   final bool loading;
@@ -602,7 +602,7 @@ class _RecentDeckSection extends StatelessWidget {
   }
 }
 
-//Widget hiển thị từng bộ thẻ đơn lẻ (Tên, số lượng card, ngày mở cuối)
+// Widget for each deck item (title, card count, last opened)
 class _DeckCard extends StatelessWidget {
   final Deck deck;
   final VoidCallback onTap;

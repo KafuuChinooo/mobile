@@ -19,11 +19,11 @@ class AuthService {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
-      print("Login Error: ${e.code} - ${e.message}"); // Log lỗi ra console
+      print("Login Error: ${e.code} - ${e.message}"); // Log error to console
       return AuthResult.failure(_mapError(e));
     } catch (e) {
-      print("Login Generic Error: $e"); // Log lỗi chung
-      return AuthResult.failure('Đăng nhập thất bại, vui lòng thử lại');
+      print("Login Generic Error: $e"); // Log generic error
+      return AuthResult.failure('Login failed, please try again.');
     }
   }
 
@@ -52,33 +52,33 @@ class AuthService {
       return AuthResult.failure(_mapError(e));
     } catch (e) {
       print("SignUp Generic Error: $e");
-      return AuthResult.failure('Đăng ký thất bại, vui lòng thử lại');
+      return AuthResult.failure('Sign up failed, please try again.');
     }
   }
 
   Future<AuthResult> signInAnon() async {
     try {
-      print("Starting anonymous sign in..."); // Bắt đầu login ẩn danh
+      print("Starting anonymous sign in...");
       await _auth.signInAnonymously();
-      print("Anonymous sign in success"); // Login ẩn danh thành công
+      print("Anonymous sign in success");
       return const AuthResult.success();
     } on FirebaseAuthException catch (e) {
       print("Anon Error: ${e.code} - ${e.message}");
       return AuthResult.failure(_mapError(e));
     } catch (e) {
       print("Anon Generic Error: $e");
-      return AuthResult.failure('Đăng nhập ẩn danh thất bại');
+      return AuthResult.failure('Anonymous sign-in failed.');
     }
   }
 
   Future<AuthResult> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
-      return const AuthResult.success(message: 'Email đặt lại mật khẩu đã được gửi');
+      return const AuthResult.success(message: 'Password reset email has been sent.');
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_mapError(e));
     } catch (e) {
-      return AuthResult.failure('Gửi email thất bại');
+      return AuthResult.failure('Failed to send reset email.');
     }
   }
 
@@ -89,15 +89,15 @@ class AuthService {
       case 'user-not-found':
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Email hoặc password sai, hãy thử lại';
+        return 'Incorrect email or password, please try again.';
       case 'email-already-in-use':
-        return 'Email đã được sử dụng';
+        return 'Email is already in use.';
       case 'invalid-email':
-        return 'Vui lòng nhập email hợp lệ';
+        return 'Please enter a valid email.';
       case 'weak-password':
-        return 'Mật khẩu quá yếu';
+        return 'Password is too weak.';
       default:
-        return e.message ?? 'Lỗi xác thực';
+        return e.message ?? 'Authentication error.';
     }
   }
 }

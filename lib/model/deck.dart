@@ -40,7 +40,7 @@ class DeckCard {
         'id': id,
         'term': term,
         'definition': definition,
-        'front': term, 
+        'front': term,
         'back': definition,
         'imageUrl': imageUrl,
         'distractors': distractors,
@@ -75,8 +75,8 @@ class Deck {
   final List<String> tags;
   final String category;
   final double progress; // 0.0 to 1.0
-  final int lastStudiedIndex; // Lưu vị trí thẻ đang học dở
-  List<DeckCard> cards; // Remove final here to make it mutable
+  final int lastStudiedIndex; // Stores the last studied card index
+  List<DeckCard> cards; // Mutable list of cards for local updates
 
   Deck({
     required this.id,

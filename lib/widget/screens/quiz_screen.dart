@@ -1,30 +1,19 @@
+import 'package:flash_card/model/deck.dart';
+import 'package:flash_card/services/quiz_engine.dart';
+import 'package:flash_card/services/quiz_rules.dart';
 import 'package:flutter/material.dart';
-
-// Giả lập model Flashcard nếu bạn chưa có model riêng tách biệt
-// Bạn có thể thay thế class này bằng model thật của bạn
-class QuizCard {
-  final String id;
-  final String term; // Mặt trước
-  final String definition; // Mặt sau
-  final List<String>? distractors;
-
-  QuizCard({
-    required this.id,
-    required this.term,
-    required this.definition,
-    this.distractors,
-  });
-}
 
 class QuizScreen extends StatefulWidget {
   final String deckName;
-  final List<QuizCard> cards;
+  final List<DeckCard> cards;
+  final QuizEngine engine;
 
   const QuizScreen({
     super.key,
     required this.deckName,
     required this.cards,
-  });
+    QuizEngine? engine,
+  }) : engine = engine ?? const QuizEngine();
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -34,58 +23,17 @@ class _QuizScreenState extends State<QuizScreen> {
   int _currentIndex = 0;
   int _score = 0;
   bool _isFinished = false;
-  List<Question> _questions = [];
+  late List<QuizQuestion> _questions;
   String? _selectedAnswer;
 
   @override
   void initState() {
     super.initState();
-    _generateQuestions();
-  }
-
-  // Thuật toán tạo câu hỏi trắc nghiệm
-  void _generateQuestions() {
-    // Trộn ngẫu nhiên danh sách thẻ
-    final shuffledCards = List<QuizCard>.from(widget.cards)..shuffle();
-    
-    _questions = shuffledCards.map((card) {
-      // 1. Đáp án đúng
-      final correctAnswer = card.definition;
-
-      // 2. Ưu tiên dùng distractors đã chuẩn bị sẵn
-      final precomputed = (card.distractors ?? [])
-          .where((d) => d.trim().isNotEmpty && d.toLowerCase() != correctAnswer.toLowerCase())
-          .toSet()
-          .toList();
-
-      List<String> wrongAnswers;
-      if (precomputed.length >= 3) {
-        wrongAnswers = precomputed.take(3).toList();
-      } else {
-        // Fallback: lấy đáp án sai từ thẻ khác
-        final otherDefinitions = widget.cards
-            .where((c) => c.id != card.id)
-            .map((c) => c.definition)
-            .where((d) => d.toLowerCase() != correctAnswer.toLowerCase())
-            .toList();
-        otherDefinitions.shuffle();
-        wrongAnswers = otherDefinitions.take(3).toList();
-      }
-      
-      // 3. Gộp lại thành 4 đáp án và trộn vị trí
-      final allOptions = [correctAnswer, ...wrongAnswers];
-      allOptions.shuffle();
-
-      return Question(
-        term: card.term,
-        correctAnswer: correctAnswer,
-        options: allOptions,
-      );
-    }).toList();
+    _questions = widget.engine.buildQuestions(widget.cards);
   }
 
   void _answerQuestion(String selectedAnswer) {
-    if (_selectedAnswer != null) return; // chặn double tap khi đang hiển thị feedback
+    if (_selectedAnswer != null) return; // avoid double tap while feedback showing
     final currentQuestion = _questions[_currentIndex];
     final isCorrect = selectedAnswer == currentQuestion.correctAnswer;
 
@@ -106,7 +54,7 @@ class _QuizScreenState extends State<QuizScreen> {
       _score = 0;
       _isFinished = false;
       _selectedAnswer = null;
-      _generateQuestions(); // Trộn lại câu hỏi mới
+      _questions = widget.engine.buildQuestions(widget.cards); // shuffle again
     });
   }
 
@@ -125,11 +73,20 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.cards.length < 4) {
+    if (widget.cards.length < minCardsForQuiz) {
       return Scaffold(
         appBar: AppBar(title: Text(widget.deckName)),
         body: const Center(
-          child: Text("Cần ít nhất 4 thẻ để bắt đầu bài kiểm tra!"),
+          child: Text(minCardErrorMessage),
+        ),
+      );
+    }
+
+    if (_questions.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.deckName)),
+        body: const Center(
+          child: Text('Cannot create questions for this deck.'),
         ),
       );
     }
@@ -143,7 +100,7 @@ class _QuizScreenState extends State<QuizScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("Câu ${_currentIndex + 1}/${_questions.length}"),
+        title: Text('Question ${_currentIndex + 1}/${_questions.length}'),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -156,17 +113,14 @@ class _QuizScreenState extends State<QuizScreen> {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            // Thanh tiến trình
             LinearProgressIndicator(
-              value: (_currentIndex) / _questions.length, // Sửa lại logic hiển thị thanh tiến trình
+              value: _currentIndex / _questions.length,
               backgroundColor: Colors.grey[200],
               valueColor: const AlwaysStoppedAnimation(Color(0xFF7B61FF)),
               minHeight: 8,
               borderRadius: BorderRadius.circular(4),
             ),
             const SizedBox(height: 40),
-            
-            // Câu hỏi (Mặt trước)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(32),
@@ -185,7 +139,7 @@ class _QuizScreenState extends State<QuizScreen> {
               child: Column(
                 children: [
                   const Text(
-                    "Thuật ngữ",
+                    'Term',
                     style: TextStyle(
                       color: Colors.grey,
                       fontSize: 14,
@@ -205,10 +159,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 ],
               ),
             ),
-            
             const Spacer(),
-            
-            // Danh sách đáp án
             ...question.options.map((option) {
               final isSelected = _selectedAnswer == option;
               final showFeedback = _selectedAnswer != null;
@@ -260,7 +211,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   Widget _buildResultScreen() {
     final percentage = (_score / _questions.length * 100).toInt();
-    
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -270,30 +221,30 @@ class _QuizScreenState extends State<QuizScreen> {
             const Spacer(),
             Container(
               width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: percentage >= 50 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-              ),
+          height: 120,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: percentage >= 50 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+          ),
               child: Icon(
                 percentage >= 50 ? Icons.emoji_events : Icons.sentiment_dissatisfied,
                 size: 60,
                 color: percentage >= 50 ? Colors.green : Colors.red,
               ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              percentage >= 80 ? "Xuất sắc!" : (percentage >= 50 ? "Làm tốt lắm!" : "Cố gắng hơn nhé!"),
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Bạn đã trả lời đúng $_score/${_questions.length} câu",
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            percentage >= 80 ? 'Excellent!' : (percentage >= 50 ? 'Nice work!' : 'Keep trying!'),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'You answered $_score/${_questions.length} correctly',
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
               child: SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -307,7 +258,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     ),
                   ),
                   child: const Text(
-                    "Làm lại bài kiểm tra",
+                    'Retake quiz',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -316,7 +267,7 @@ class _QuizScreenState extends State<QuizScreen> {
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text("Quay lại bộ thẻ"),
+              child: const Text('Back to deck'),
             ),
             const SizedBox(height: 32),
           ],
@@ -324,16 +275,4 @@ class _QuizScreenState extends State<QuizScreen> {
       ),
     );
   }
-}
-
-class Question {
-  final String term;
-  final String correctAnswer;
-  final List<String> options;
-
-  Question({
-    required this.term,
-    required this.correctAnswer,
-    required this.options,
-  });
 }

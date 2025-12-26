@@ -13,62 +13,62 @@ class QuizQuestion {
 final List<QuizQuestion> quizQuestions = [
   QuizQuestion(
     question: 'Natural disaster (n)',
-    answer: 'Thảm họa thiên nhiên',
+    answer: 'Natural disaster',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Greenhouse effect (n)',
-    answer: 'Hiệu ứng nhà kính',
+    answer: 'Greenhouse effect',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Rising sea levels (n. phr.)',
-    answer: 'Mực nước biển dâng',
+    answer: 'Rising sea levels',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Habitat loss (n)',
-    answer: 'Mất môi trường sống',
+    answer: 'Habitat loss',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Climate change (n)',
-    answer: 'Biến đổi khí hậu',
+    answer: 'Climate change',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Global warming (n)',
-    answer: 'Sự nóng lên toàn cầu',
+    answer: 'Global warming',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Air pollution (n)',
-    answer: 'Ô nhiễm không khí',
+    answer: 'Air pollution',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Water contamination (n)',
-    answer: 'Ô nhiễm nguồn nước',
+    answer: 'Water contamination',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Deforestation (n)',
-    answer: 'Nạn phá rừng',
+    answer: 'Deforestation',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Overfishing (n)',
-    answer: 'Đánh bắt cá quá mức',
+    answer: 'Overfishing',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Desertification (n)',
-    answer: 'Sa mạc hóa',
+    answer: 'Desertification',
     category: 'Environment',
   ),
   QuizQuestion(
     question: 'Ozone depletion (n)',
-    answer: 'Sự suy giảm tầng ozone',
+    answer: 'Ozone depletion',
     category: 'Environment',
   ),
 ];
