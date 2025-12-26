@@ -86,17 +86,17 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 35),
               const Text(
                 'Hey,\nWelcome Back',
                 style: TextStyle(
-                  fontSize: 50,
+                  fontSize: 45,
                   fontWeight: FontWeight.w800,
                   color: primary,
                   height: 1.1,
                 ),
               ),
-              const SizedBox(height: 60),
+              const SizedBox(height: 50),
               _AuthTextField(
                 controller: _emailController,
                 hint: 'Email',
@@ -264,7 +264,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               const Text(
                 "Let's get\nstarted",
                 style: TextStyle(
-                  fontSize: 50,
+                  fontSize: 45,
                   fontWeight: FontWeight.w800,
                   color: primary,
                   height: 1.1,
