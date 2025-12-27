@@ -4,25 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flash_card/helper/router.dart';
 import 'package:flash_card/firebase_options.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const FlashcardApp());
+  final prefs = await SharedPreferences.getInstance();
+  final hasSeenWelcome = prefs.getBool('has_seen_welcome') ?? false;
+  final initialRoute = !hasSeenWelcome
+      ? AppRouter.welcome
+      : AuthService.instance.currentUser != null
+          ? AppRouter.home
+          : AppRouter.login;
+
+  runApp(FlashcardApp(initialRoute: initialRoute));
 }
 
 class FlashcardApp extends StatelessWidget {
-  const FlashcardApp({super.key});
+  final String initialRoute;
+
+  const FlashcardApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
-    // Check if user is already signed in
-    final initialRoute = AuthService.instance.currentUser != null
-        ? AppRouter.home
-        : AppRouter.login;
-
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) => MaterialApp(
         debugShowCheckedModeBanner: false,
