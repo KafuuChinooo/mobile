@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flash_card/model/deck.dart';
 import 'package:flash_card/services/quiz_engine.dart';
 import 'package:flutter/material.dart';
@@ -24,21 +26,13 @@ class _WaterSortScreenState extends State<WaterSortScreen> {
   static const Color _accent = Color(0xFF7B61FF);
   static const Color _bg = Color(0xFF0F0F0F);
   static const Color _outline = Colors.white;
+  final Random _rand = Random();
 
-  // Fixed palette (3 colors) and layout (5 tubes, 4 layers) to mirror the reference look.
+  // Fixed palette (3 colors) to mirror the reference look.
   static const List<Color> _palette = [
     Color(0xFF2D9CDB), // blue
     Color(0xFFD62828), // red
     Color(0xFFF2994A), // orange
-  ];
-
-  // Each list is bottom -> top. Two empty tubes at the end.
-  static const List<List<int>> _initialLayout = [
-    [0, 1, 0, 1], // blue/red/blue/red
-    [2, 0, 1, 0], // orange/blue/red/blue
-    [2, 2, 1, 2], // orange/orange/red/orange
-    [],
-    [],
   ];
 
   late List<List<Color>> _tubes;
@@ -57,13 +51,37 @@ class _WaterSortScreenState extends State<WaterSortScreen> {
 
   void _initGame() {
     _questions = widget.engine.buildQuestions(widget.cards);
-    _tubes = _initialLayout
-        .map((tube) => tube.map((i) => _palette[i]).toList())
-        .toList();
+    _tubes = _buildRandomTubes();
     _movesLeft = _bonusMoves;
     _selectedTube = null;
     _questionIndex = 0;
     _won = false;
+  }
+
+  List<List<Color>> _buildRandomTubes() {
+    // Build a bag of colors (4 of each) and shuffle
+    final colorIndexes = <int>[];
+    for (var i = 0; i < _palette.length; i++) {
+      colorIndexes.addAll(List.filled(_tubeCapacity, i));
+    }
+    colorIndexes.shuffle(_rand);
+
+    // Fill one tube per color count, then add two empties
+    final tubes = <List<Color>>[];
+    final filledTubeCount = _palette.length;
+    for (var i = 0; i < filledTubeCount; i++) {
+      final start = i * _tubeCapacity;
+      final chunk = colorIndexes.sublist(start, start + _tubeCapacity);
+      tubes.add(chunk.map((idx) => _palette[idx]).toList());
+    }
+    tubes.addAll(List.generate(2, (_) => <Color>[]));
+
+    // Ensure at least one mixed tube so the puzzle isn't pre-solved
+    final hasMixed = tubes.any((tube) => tube.length > 1 && tube.toSet().length > 1);
+    if (!hasMixed) return _buildRandomTubes();
+
+    tubes.shuffle(_rand);
+    return tubes;
   }
 
   void _onTubeTap(int index) {

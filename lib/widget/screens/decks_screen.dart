@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 
 enum _DeckAction { edit, delete }
 
-enum _DeckListTab { created, completed }
+enum _DeckListTab { created, uncomplete }
 
 enum _TestMode { quiz, waterSort }
 
@@ -36,7 +36,7 @@ class DecksScreen extends StatefulWidget {
 }
 
 class _DecksScreenState extends State<DecksScreen> {
-  static const _accent = Color(0xFF7D5CFA);
+  static const _accent = Color(0xFF9D90FF); // lighter purple for progress/CTA
   static const _mutedBackground = Color(0xFFF7F7FB);
 
   late final DeckRepository _repository;
@@ -305,9 +305,9 @@ class _DecksScreenState extends State<DecksScreen> {
       final isCompleted = deck.progress >= completionThreshold;
       switch (_activeTab) {
         case _DeckListTab.created:
+          return true; // show all
+        case _DeckListTab.uncomplete:
           return !isCompleted;
-        case _DeckListTab.completed:
-          return isCompleted;
       }
     }
 
@@ -541,9 +541,9 @@ class _DecksScreenState extends State<DecksScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: const [
-                  _Pill(label: '10 test'),
-                  _Pill(label: '20 review'),
+                children: [
+                  _Pill(label: '10 test', accent: _accent),
+                  _Pill(label: '20 review', accent: _accent),
                 ],
               ),
               const SizedBox(height: 16),
@@ -572,7 +572,10 @@ class _DecksScreenState extends State<DecksScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: () => _openFlashcard(deck),
-                      child: const Text('Learn'),
+                      child: const Text(
+                        'Learn',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ),
                 ],
@@ -598,13 +601,15 @@ class _DecksScreenState extends State<DecksScreen> {
             _SegmentedTab(
               label: 'Created',
               selected: _activeTab == _DeckListTab.created,
+              accent: _accent,
               onTap: () => setState(() => _activeTab = _DeckListTab.created),
             ),
             const SizedBox(width: 10),
             _SegmentedTab(
-              label: 'Completed',
-              selected: _activeTab == _DeckListTab.completed,
-              onTap: () => setState(() => _activeTab = _DeckListTab.completed),
+              label: 'Uncomplete',
+              selected: _activeTab == _DeckListTab.uncomplete,
+              accent: _accent,
+              onTap: () => setState(() => _activeTab = _DeckListTab.uncomplete),
             ),
           ],
         ),
@@ -629,8 +634,8 @@ class _DecksScreenState extends State<DecksScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _activeTab == _DeckListTab.completed
-                      ? 'You have not completed any deck yet.'
+                  _activeTab == _DeckListTab.uncomplete
+                      ? 'Great job! No unfinished decks right now.'
                       : 'No decks yet. Tap + to add one.',
                   style: const TextStyle(color: Colors.black87),
                 ),
@@ -689,9 +694,9 @@ class _DecksScreenState extends State<DecksScreen> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: const [
-                          _Pill(label: '0 test'),
-                          _Pill(label: '0 review'),
+                        children: [
+                          _Pill(label: '0 test', accent: _accent),
+                          _Pill(label: '0 review', accent: _accent),
                         ],
                       ),
                       const SizedBox(height: 14),
@@ -732,7 +737,10 @@ class _DecksScreenState extends State<DecksScreen> {
                                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               ),
-                              child: const Text('Learn'),
+                              child: const Text(
+                                'Learn',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                              ),
                             ),
                           ],
                         ),
@@ -776,21 +784,22 @@ class _SectionCard extends StatelessWidget {
 
 class _Pill extends StatelessWidget {
   final String label;
+  final Color accent;
 
-  const _Pill({required this.label});
+  const _Pill({required this.label, required this.accent});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1E7FF),
+        color: accent.withOpacity(0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Color(0xFF7D5CFA),
+        style: TextStyle(
+          color: accent,
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),
@@ -856,11 +865,13 @@ class _SegmentedTab extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final Color accent;
 
   const _SegmentedTab({
     required this.label,
     required this.selected,
     required this.onTap,
+    required this.accent,
   });
 
   @override
@@ -870,14 +881,14 @@ class _SegmentedTab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE8E1FF) : Colors.white,
+          color: selected ? accent.withOpacity(0.14) : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? const Color(0xFF7D5CFA) : Colors.grey.shade300),
+          border: Border.all(color: selected ? accent : Colors.grey.shade300),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? const Color(0xFF7D5CFA) : Colors.black87,
+            color: selected ? accent : Colors.black87,
             fontWeight: FontWeight.w600,
           ),
         ),
