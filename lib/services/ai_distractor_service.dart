@@ -1,41 +1,57 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-
 import 'package:flash_card/model/deck.dart';
 import 'package:flash_card/services/distractor_provider.dart';
 
-/// Quick Gemini client for generating distractors. Hardcoded key is for demo only.
 class AiDistractorService implements DistractorProvider {
-  AiDistractorService({http.Client? client, String? model})
-      : _client = client ?? http.Client(),
-        // Default to the free tier model. Can be overridden via constructor.
-        _model = model ?? 'gemini-2.5-flash-lite';
+  AiDistractorService({http.Client? client}) : _client = client ?? http.Client();
 
-  static const String _apiKey = 'AIzaSyAFUztKCdx1fVCHW8DanryPeaArP09jwyw';
-  final String _model;
+  static const String _apiKey = 'AIzaSyBIsETq9CTNcM6wSMHuLujvAgCQblWR_A0';
+  static const String _model = 'gemma-3-27b-it';
+
   final http.Client _client;
 
   Future<List<String>> generate({
     required String term,
     required String answer,
   }) async {
-    _assertKey();
+    final batch = await generateBatch([
+      DeckCard(term: term, definition: answer, id: 'single'),
+    ]);
+    final list = batch['single'];
+    if (list == null || list.length < 3) {
+      throw Exception('Not enough valid distractors for single request: $list');
+    }
+    return list.take(3).toList();
+  }
+
+  @override
+  Future<Map<String, List<String>>> generateBatch(List<DeckCard> cards) async {
+    if (cards.isEmpty) return {};
 
     final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1/models/$_model:generateContent?key=$_apiKey',
+      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
     );
 
+    final items = cards
+        .map((c) => {
+              'id': c.id,
+              'term': c.term,
+              'answer': c.definition,
+            })
+        .toList();
+
     final prompt = '''
-You read all questions and correct answers before generating. Produce exactly 3 plausible distractors for this multiple-choice flashcard.
-Term: "$term"
-Correct answer: "$answer"
-Rules:
-- Keep distractors in the same language as the term/answer.
-- Make them relevant to the concept, similar in length to the correct answer, and challenging but still plausible.
-- They must be factually correct on their own, but not the correct answer for this term.
-- Must be unique and not equal to or a substring/superstring of the correct answer.
-Return JSON only: {"distractors":["d1","d2","d3"]}''';
+You are generating distractors (plausible wrong answers) for flashcards. Read each item and return JSON only, following the example structure exactly.
+Strict rules:
+- Output: JSON only, no markdown fences, no leading/trailing text.
+- Structure example (copy this shape):
+{"results":[{"id":"card1","distractors":["Đáp án sai 1","Đáp án sai 2","Đáp án sai 3"]},{"id":"card2","distractors":["Sai 1","Sai 2","Sai 3"]}]}
+- Per item: exactly 3 concise, plausible, unique distractors.
+- Safety: never match, paraphrase, or contain the correct answer; keep language consistent with the item.
+Items: ${jsonEncode(items)}
+''';
 
     final response = await _client.post(
       uri,
@@ -52,10 +68,7 @@ Return JSON only: {"distractors":["d1","d2","d3"]}''';
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
-        'AI error ${response.statusCode}: ${response.body}. '
-        'Model: $_model. Try gemini-pro or gemini-1.5-pro-latest if 404 persists.',
-      );
+      throw Exception('AI error ${response.statusCode}: ${response.body}');
     }
 
     final decoded = jsonDecode(response.body);
@@ -64,115 +77,39 @@ Return JSON only: {"distractors":["d1","d2","d3"]}''';
       throw Exception('Empty AI response: $decoded');
     }
 
-    return _parseDistractors(rawText, answer);
-  }
-
-  /// Batch mode: generate distractors for many cards in one call.
-  /// Returns a map cardId -> distractors.
-  @override
-  Future<Map<String, List<String>>> generateBatch(List<DeckCard> cards) async {
-    _assertKey();
-    if (cards.isEmpty) return {};
-
-    final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1/models/$_model:generateContent?key=$_apiKey',
-    );
-
-    final buffer = StringBuffer();
-    buffer.writeln('You are a generator of distractors. Read and consider ALL items (questions and answers) before generating.');
-    buffer.writeln('For each item, return exactly 3 distractors in the same language as the term/answer.');
-    buffer.writeln('Make distractors relevant, similar in length to the correct answer, challenging but plausible, and factually correct on their own.');
-    buffer.writeln('Items:');
-    for (final card in cards) {
-      buffer.writeln('- id:"${card.id}", term:"${card.term}", answer:"${card.definition}"');
-    }
-    buffer.writeln('Return JSON only, array of objects:');
-    buffer.writeln('[{"id":"<id>","distractors":["d1","d2","d3"]}, ...]');
-    buffer.writeln('Rules: concise, plausible, unique per item, not equal or substring of the correct answer.');
-
-    final response = await _client.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'contents': [
-          {
-            'parts': [
-              {'text': buffer.toString()}
-            ]
-          }
-        ]
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception(
-        'AI error ${response.statusCode}: ${response.body}. '
-        'Model: $_model. Try gemini-pro or gemini-1.5-pro-latest if 404 persists.',
-      );
+    final parsedJson = _parseJsonBlock(rawText);
+    final results = parsedJson['results'];
+    if (results is! List) {
+      throw FormatException('AI response missing results array: $rawText');
     }
 
-    final decoded = jsonDecode(response.body);
-    final rawText = decoded['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
-    if (rawText == null || rawText.isEmpty) {
-      throw Exception('Empty AI response: $decoded');
-    }
-
-    final parsedArray = _decodeJsonArray(rawText);
-
-    final result = <String, List<String>>{};
-    for (final item in parsedArray) {
-      if (item is! Map) continue;
-      final id = item['id']?.toString() ?? '';
-      final distractorList = item['distractors'] as List?;
-      if (id.isEmpty || distractorList == null) continue;
-      final answer = cards.firstWhere((c) => c.id == id, orElse: () => DeckCard(term: '', definition: '', id: 'missing')).definition;
-      final cleaned = _cleanDistractors(distractorList, answer);
-      if (cleaned.length >= 3) {
-        result[id] = cleaned.take(3).toList();
+    final map = <String, List<String>>{};
+    for (final entry in results) {
+      if (entry is! Map) continue;
+      final id = entry['id']?.toString() ?? '';
+      final rawList = (entry['distractors'] as List?)?.map((e) => e.toString()).toList() ?? [];
+      final cleaned = <String>[];
+      for (final item in rawList) {
+        final trimmed = item.trim();
+        if (trimmed.isEmpty) continue;
+        final answer = cards.firstWhere((c) => c.id == id, orElse: () => DeckCard(term: '', definition: '', id: id)).definition;
+        if (_equalsOrContains(trimmed, answer)) continue;
+        if (cleaned.contains(trimmed)) continue;
+        cleaned.add(trimmed);
+      }
+      if (id.isNotEmpty && cleaned.length >= 3) {
+        map[id] = cleaned.take(3).toList();
       }
     }
 
-    return result;
+    if (map.isEmpty) {
+      throw Exception('No valid distractors returned: $rawText');
+    }
+    return map;
   }
 
   void dispose() {
     _client.close();
-  }
-
-  void _assertKey() {
-    if (_apiKey.isEmpty || _apiKey == 'PUT_YOUR_API_KEY_HERE') {
-      throw StateError('Set your Gemini API key in AiDistractorService._apiKey before calling generate.');
-    }
-  }
-
-  List<String> _parseDistractors(String rawText, String answer) {
-    late final Map<String, dynamic> parsedJson;
-    try {
-      parsedJson = _decodeJsonObject(rawText);
-    } on FormatException catch (e) {
-      throw FormatException('AI response is not valid JSON: ${e.message}');
-    }
-
-    final rawList = (parsedJson['distractors'] as List?)?.map((e) => e.toString()).toList() ?? [];
-    final cleaned = _cleanDistractors(rawList, answer);
-
-    if (cleaned.length < 3) {
-      throw Exception('Not enough valid distractors: $cleaned');
-    }
-
-    return cleaned.take(3).toList();
-  }
-
-  List<String> _cleanDistractors(List<dynamic> rawList, String answer) {
-    final cleaned = <String>[];
-    for (final item in rawList) {
-      final trimmed = item.toString().trim();
-      if (trimmed.isEmpty) continue;
-      if (_equalsOrContains(trimmed, answer)) continue;
-      if (cleaned.contains(trimmed)) continue;
-      cleaned.add(trimmed);
-    }
-    return cleaned;
   }
 
   bool _equalsOrContains(String a, String b) {
@@ -181,51 +118,76 @@ Return JSON only: {"distractors":["d1","d2","d3"]}''';
     return la == lb || la.contains(lb) || lb.contains(la);
   }
 
-  List<dynamic> _decodeJsonArray(String rawText) {
-    final sanitized = _sanitizeJsonLike(rawText, preferArray: true);
-    try {
-      final decoded = jsonDecode(sanitized);
-      if (decoded is List) return decoded;
-    } catch (_) {
-      // Fall through to throw below.
-    }
-    throw FormatException('Could not parse array payload. Snippet: ${_shorten(rawText)}');
-  }
-
-  Map<String, dynamic> _decodeJsonObject(String rawText) {
-    final sanitized = _sanitizeJsonLike(rawText, preferArray: false);
-    try {
-      final decoded = jsonDecode(sanitized);
-      if (decoded is Map<String, dynamic>) return decoded;
-    } catch (_) {
-      // Fall through to throw below.
-    }
-    throw FormatException('Could not parse object payload. Snippet: ${_shorten(rawText)}');
-  }
-
-  String _sanitizeJsonLike(String rawText, {required bool preferArray}) {
-    // Handle fenced code blocks and extra explanations from the model.
+  Map<String, dynamic> _parseJsonBlock(String rawText) {
+    // Try fenced code block first
     final fenced = RegExp(r'```(?:json)?\s*([\s\S]*?)```', multiLine: true);
     final fenceMatch = fenced.firstMatch(rawText);
     var text = (fenceMatch != null ? fenceMatch.group(1) : rawText) ?? rawText;
     text = text.trim();
 
-    // If the model prepends explanations, slice out the JSON-looking part.
-    final start = preferArray ? text.indexOf('[') : text.indexOf('{');
-    final end = preferArray ? text.lastIndexOf(']') : text.lastIndexOf('}');
+    // Strip common leading markers like "json" or quoted wrappers
+    text = text.replaceFirst(RegExp(r'''^["']?\s*json["']?:?''', caseSensitive: false), '').trim();
+
+    // Trim to first/last brace if present
+    final start = text.indexOf('{');
+    final end = text.lastIndexOf('}');
     if (start != -1 && end > start) {
       text = text.substring(start, end + 1);
     }
 
-    // Remove trailing commas that Gemini sometimes leaves behind.
-    final trailingCommaPattern = RegExp(r',(\s*[}\]])');
-    text = text.replaceAllMapped(trailingCommaPattern, (m) => m.group(1)!);
+    // Remove wrapping quotes if the whole payload is quoted
+    if (text.startsWith('"') && text.endsWith('"') && text.length > 1) {
+      text = text.substring(1, text.length - 1);
+    }
 
-    return text;
-  }
+    // First try strict JSON
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {/* fallthrough */}
 
-  String _shorten(String input, {int max = 160}) {
-    if (input.length <= max) return input;
-    return '${input.substring(0, max)}...';
+    // Retry with a lenient pass: replace single quotes with double quotes and decode again.
+    var sanitized = text.replaceAll("'", '"');
+    try {
+      final decoded = jsonDecode(sanitized);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {/* fallthrough */}
+
+    // If the model returned escaped JSON inside a string, try unescaping once.
+    try {
+      final decodedString = jsonDecode('"${sanitized.replaceAll('"', r'\\"')}"') as String;
+      final innerStart = decodedString.indexOf('{');
+      final innerEnd = decodedString.lastIndexOf('}');
+      if (innerStart != -1 && innerEnd > innerStart) {
+        final inner = decodedString.substring(innerStart, innerEnd + 1);
+        final decoded = jsonDecode(inner);
+        if (decoded is Map<String, dynamic>) return decoded;
+      }
+    } catch (_) {/* fallthrough */}
+
+    // Last resort: manual extraction of entries like 'id':'...','distractors':[...]
+    final entries = <Map<String, dynamic>>[];
+    final entryRe = RegExp(r"'id'\s*:\s*'([^']+)'.*?'distractors'\s*:\s*\[(.*?)\]", dotAll: true);
+    for (final match in entryRe.allMatches(text)) {
+      final id = match.group(1);
+      final rawList = match.group(2) ?? '';
+      final parts = rawList.split(RegExp(r'\s*,\s*')).map((e) {
+        var v = e.trim();
+        if (v.startsWith("'") && v.endsWith("'")) {
+          v = v.substring(1, v.length - 1);
+        } else if (v.startsWith('"') && v.endsWith('"')) {
+          v = v.substring(1, v.length - 1);
+        }
+        return v;
+      }).where((v) => v.isNotEmpty).toList();
+      if (id != null && id.isNotEmpty && parts.length >= 3) {
+        entries.add({'id': id, 'distractors': parts});
+      }
+    }
+    if (entries.isNotEmpty) {
+      return {'results': entries};
+    }
+
+    throw FormatException('AI response is not valid JSON: $rawText');
   }
 }

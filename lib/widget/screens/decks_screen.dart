@@ -5,13 +5,17 @@ import 'package:flash_card/widget/app_scaffold.dart';
 import 'package:flash_card/widget/screens/add_deck_screen.dart';
 import 'package:flash_card/widget/screens/flashcard.dart';
 import 'package:flash_card/widget/screens/quiz_screen.dart';
+import 'package:flash_card/widget/screens/water_sort_screen.dart';
 import 'package:flash_card/services/ai_distractor_service.dart';
+import 'package:flash_card/services/quiz_engine.dart';
 import 'package:flash_card/services/quiz_prep_service.dart';
 import 'package:flutter/material.dart';
 
 enum _DeckAction { edit, delete }
 
 enum _DeckListTab { created, completed }
+
+enum _TestMode { quiz, waterSort }
 
 class DecksScreen extends StatefulWidget {
   final bool showBottomNav;
@@ -44,6 +48,7 @@ class _DecksScreenState extends State<DecksScreen> {
   List<Deck> _decks = [];
   bool _loading = true;
   _DeckListTab _activeTab = _DeckListTab.created;
+  final QuizEngine _engine = const QuizEngine();
 
   QuizPrepService _buildDefaultQuizPrepService() {
     final ai = AiDistractorService();
@@ -116,7 +121,47 @@ class _DecksScreenState extends State<DecksScreen> {
     await _loadDecks();
   }
 
-  Future<void> _openQuiz(Deck deck) async {
+  Future<void> _openQuizChooser(Deck deck) async {
+    final choice = await showModalBottomSheet<_TestMode>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Choose test mode',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: const Icon(Icons.list_alt_outlined),
+                  title: const Text('Multiple choice'),
+                  subtitle: const Text('Standard multiple choice'),
+                  onTap: () => Navigator.of(context).pop(_TestMode.quiz),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.science_outlined),
+                  title: const Text('Water Sort mini-game'),
+                  subtitle: const Text('Color sort mini-game; answer to earn extra moves'),
+                  onTap: () => Navigator.of(context).pop(_TestMode.waterSort),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (choice == null) return;
+
     final progress = ValueNotifier<double>(0);
     final dialog = showDialog(
       context: context,
@@ -172,14 +217,29 @@ class _DecksScreenState extends State<DecksScreen> {
     deck.cards = preparedCards;
     _repository.markDeckOpened(deck.id);
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => QuizScreen(
-          deckName: deck.title,
-          cards: preparedCards,
-        ),
-      ),
-    );
+    switch (choice) {
+      case _TestMode.quiz:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => QuizScreen(
+              deckName: deck.title,
+              cards: preparedCards,
+            ),
+          ),
+        );
+        break;
+      case _TestMode.waterSort:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => WaterSortScreen(
+              deckName: deck.title,
+              cards: preparedCards,
+              engine: _engine,
+            ),
+          ),
+        );
+        break;
+    }
   }
 
   void _handleMenuSelection(BuildContext context, _DeckAction action, Deck deck) async {
@@ -227,18 +287,119 @@ class _DecksScreenState extends State<DecksScreen> {
   }
 
   List<Deck> get _filteredDecks {
-    final query = _searchController.text.trim().toLowerCase();
-    final filtered = _decks.where((deck) {
-      final matchesQuery =
-          query.isEmpty || deck.title.toLowerCase().contains(query) || deck.description.toLowerCase().contains(query);
-      return matchesQuery;
-    });
+    const completionThreshold = 0.999; // tolerate floating errors
+    final query = _searchController.text.trim();
+    final normalizedQuery = _normalize(query);
 
-    if (_activeTab == _DeckListTab.completed) {
-      return filtered.where((deck) => deck.lastOpenedAt != null).toList();
+    bool matchesQuery(Deck deck) {
+      if (normalizedQuery.isEmpty) return true;
+      final normalizedTitle = _normalize(deck.title);
+      final normalizedDescription = _normalize(deck.description);
+      final normalizedTags = _normalize(deck.tags.join(' '));
+      return normalizedTitle.contains(normalizedQuery) ||
+          normalizedDescription.contains(normalizedQuery) ||
+          normalizedTags.contains(normalizedQuery);
     }
-    return filtered.toList();
+
+    bool matchesTab(Deck deck) {
+      final isCompleted = deck.progress >= completionThreshold;
+      switch (_activeTab) {
+        case _DeckListTab.created:
+          return !isCompleted;
+        case _DeckListTab.completed:
+          return isCompleted;
+      }
+    }
+
+    return _decks.where((deck) => matchesQuery(deck) && matchesTab(deck)).toList();
   }
+
+  String _normalize(String input) {
+    const accentMap = <String, String>{
+      // a
+      "\u00e1": "a",
+      "\u00e0": "a",
+      "\u1ea3": "a",
+      "\u00e3": "a",
+      "\u1ea1": "a",
+      "\u0103": "a",
+      "\u1eaf": "a",
+      "\u1eb1": "a",
+      "\u1eb3": "a",
+      "\u1eb5": "a",
+      "\u1eb7": "a",
+      "\u00e2": "a",
+      "\u1ea5": "a",
+      "\u1ea7": "a",
+      "\u1ea9": "a",
+      "\u1eab": "a",
+      "\u1ead": "a",
+      // d
+      "\u0111": "d",
+      // e
+      "\u00e9": "e",
+      "\u00e8": "e",
+      "\u1ebb": "e",
+      "\u1ebd": "e",
+      "\u1eb9": "e",
+      "\u00ea": "e",
+      "\u1ebf": "e",
+      "\u1ec1": "e",
+      "\u1ec3": "e",
+      "\u1ec5": "e",
+      "\u1ec7": "e",
+      // i
+      "\u00ed": "i",
+      "\u00ec": "i",
+      "\u1ec9": "i",
+      "\u0129": "i",
+      "\u1ecb": "i",
+      // o
+      "\u00f3": "o",
+      "\u00f2": "o",
+      "\u1ecf": "o",
+      "\u00f5": "o",
+      "\u1ecd": "o",
+      "\u00f4": "o",
+      "\u1ed1": "o",
+      "\u1ed3": "o",
+      "\u1ed5": "o",
+      "\u1ed7": "o",
+      "\u1ed9": "o",
+      "\u01a1": "o",
+      "\u1edb": "o",
+      "\u1edd": "o",
+      "\u1edf": "o",
+      "\u1ee1": "o",
+      "\u1ee3": "o",
+      // u
+      "\u00fa": "u",
+      "\u00f9": "u",
+      "\u1ee7": "u",
+      "\u0169": "u",
+      "\u1ee5": "u",
+      "\u01b0": "u",
+      "\u1ee9": "u",
+      "\u1eeb": "u",
+      "\u1eed": "u",
+      "\u1eef": "u",
+      "\u1ef1": "u",
+      // y
+      "\u00fd": "y",
+      "\u1ef3": "y",
+      "\u1ef7": "y",
+      "\u1ef9": "y",
+      "\u1ef5": "y",
+    };
+
+    final buffer = StringBuffer();
+    for (final rune in input.runes) {
+      final char = String.fromCharCode(rune).toLowerCase();
+      buffer.write(accentMap[char] ?? char);
+    }
+    return buffer.toString();
+  }
+
 
   double _progressForDeck(Deck deck) {
     if (deck.cardCount == 0) return 0;
@@ -392,7 +553,7 @@ class _DecksScreenState extends State<DecksScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => _openQuiz(deck),
+                      onPressed: () => _openQuizChooser(deck),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _accent,
                         side: const BorderSide(color: _accent),
@@ -555,7 +716,7 @@ class _DecksScreenState extends State<DecksScreen> {
                             ),
                             const Spacer(),
                             OutlinedButton(
-                              onPressed: () => _openQuiz(deck),
+                              onPressed: () => _openQuizChooser(deck),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: _accent,
                                 side: const BorderSide(color: _accent),

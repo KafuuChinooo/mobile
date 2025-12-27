@@ -43,7 +43,7 @@ class QuizPrepService {
       throw QuizPrepException(minCardErrorMessage);
     }
 
-    // Find cards needing distractors.
+    // Find cards needing distractors (skip ones already satisfied).
     final needing = cards.where((c) => (c.distractors?.length ?? 0) < requiredDistractorsPerCard).toList();
     if (needing.isEmpty) {
       onProgress?.call(1);

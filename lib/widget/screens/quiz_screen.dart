@@ -32,13 +32,16 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _hintLoading = false;
   String? _hint;
   String? _hintError;
+  bool _hintRequested = false;
+  final Map<String, String> _hintCache = {};
+  bool _prefetchingHints = false;
 
   @override
   void initState() {
     super.initState();
     _hintService = widget.hintService ?? AiHintService();
     _questions = widget.engine.buildQuestions(widget.cards);
-    _fetchHintForCurrent();
+    _prefetchHints();
   }
 
   void _answerQuestion(String selectedAnswer) {
@@ -59,8 +62,13 @@ class _QuizScreenState extends State<QuizScreen> {
       _isFinished = false;
       _selectedAnswer = null;
       _questions = widget.engine.buildQuestions(widget.cards); // shuffle again
-      _fetchHintForCurrent();
+      _hint = null;
+      _hintError = null;
+      _hintLoading = false;
+      _hintRequested = false;
+      _hintCache.clear();
     });
+    _prefetchHints();
   }
 
   void _goToNextQuestion() {
@@ -68,8 +76,11 @@ class _QuizScreenState extends State<QuizScreen> {
       setState(() {
         _currentIndex++;
         _selectedAnswer = null;
+        _hint = null;
+        _hintError = null;
+        _hintLoading = false;
+        _hintRequested = false;
       });
-      _fetchHintForCurrent();
     } else {
       setState(() {
         _isFinished = true;
@@ -77,32 +88,51 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
-  Future<void> _fetchHintForCurrent() async {
-    if (_questions.isEmpty) return;
-    final question = _questions[_currentIndex];
+  Future<void> _prefetchHints() async {
+    if (_questions.isEmpty || _prefetchingHints) return;
     setState(() {
-      _hintLoading = true;
-      _hintError = null;
-      _hint = null;
+      _prefetchingHints = true;
     });
     try {
-      final hint = await _hintService.generateHint(term: question.term, answer: question.correctAnswer);
+      final batch = await _hintService.generateHintsBatch(_questions);
       if (!mounted) return;
       setState(() {
-        _hint = hint;
+        _hintCache.addAll(batch);
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _hintError = 'Hint unavailable: $e';
+        _hintError = 'Hint prefetch failed: $e';
       });
     } finally {
       if (mounted) {
         setState(() {
-          _hintLoading = false;
+          _prefetchingHints = false;
         });
       }
     }
+  }
+
+  Future<void> _fetchHintForCurrent() async {
+    if (_questions.isEmpty || _hintLoading || _prefetchingHints) return;
+    final question = _questions[_currentIndex];
+    // Serve from cache to avoid extra API calls.
+    final cached = _hintCache[question.cardId];
+    if (cached != null) {
+      setState(() {
+        _hintRequested = true;
+        _hint = cached;
+        _hintError = null;
+      });
+      return;
+    }
+
+    // If not prefetched, avoid extra API calls; show error instead.
+    setState(() {
+      _hintRequested = true;
+      _hintError = 'Hint not preloaded.';
+      _hint = null;
+    });
   }
 
   @override
@@ -208,6 +238,8 @@ class _QuizScreenState extends State<QuizScreen> {
               hint: _hint,
               loading: _hintLoading,
               error: _hintError,
+              hintRequested: _hintRequested,
+              onGenerate: _fetchHintForCurrent,
               onRetry: _fetchHintForCurrent,
             ),
             const SizedBox(height: 12),
@@ -353,19 +385,25 @@ class _HintPanel extends StatelessWidget {
   final String? hint;
   final bool loading;
   final String? error;
+  final bool hintRequested;
+  final VoidCallback onGenerate;
   final VoidCallback onRetry;
 
   const _HintPanel({
     required this.hint,
     required this.loading,
     required this.error,
+    required this.hintRequested,
+    required this.onGenerate,
     required this.onRetry,
   });
 
   @override
   Widget build(BuildContext context) {
     Widget content;
-    if (loading) {
+    if (!hintRequested) {
+      content = const Text('Nhấn vào bóng đèn để tạo gợi ý.', style: TextStyle(color: Colors.grey));
+    } else if (loading) {
       content = const Text('Generating hint...', style: TextStyle(color: Colors.grey));
     } else if (error != null) {
       content = Row(
@@ -394,14 +432,20 @@ class _HintPanel extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 32,
-            width: 32,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFFE8E1FF),
+          GestureDetector(
+            onTap: loading ? null : onGenerate,
+            child: Container(
+              height: 32,
+              width: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: loading ? Colors.grey.shade200 : const Color(0xFFE8E1FF),
+              ),
+              child: Icon(
+                Icons.lightbulb_outline,
+                color: loading ? Colors.grey : const Color(0xFF7B61FF),
+              ),
             ),
-            child: const Icon(Icons.lightbulb_outline, color: Color(0xFF7B61FF)),
           ),
           const SizedBox(width: 12),
           Expanded(child: content),
