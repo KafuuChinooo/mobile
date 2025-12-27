@@ -239,7 +239,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r'^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$').hasMatch(email);
+    return RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email);
+  }
+
+  String? _validateInputs({
+    required String username,
+    required String email,
+    required String password,
+    required String confirm,
+  }) {
+    if (username.isEmpty) return 'Please enter a username';
+    if (email.isEmpty) return 'Please enter an email';
+    if (!_isValidEmail(email)) return 'Please enter a valid email';
+    if (password.isEmpty) return 'Please enter a password';
+    if (password != confirm) return 'Passwords do not match';
+    return null;
   }
 
   @override
@@ -334,22 +348,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         final password = _passwordController.text;
                         final confirm = _confirmController.text;
 
-                        if (username.isEmpty) {
-                          _showError(context, 'Please enter a username');
-                          return;
-                        }
-                        if (!_isValidEmail(email)) {
-                          _showError(context, 'Please enter a valid email');
-                          return;
-                        }
-
-                        if (password != confirm) {
-                          _showError(context, 'Passwords do not match');
-                          return;
-                        }
-
-                        if (password.isEmpty) {
-                          _showError(context, 'Please enter a password');
+                        final validationError = _validateInputs(
+                          username: username,
+                          email: email,
+                          password: password,
+                          confirm: confirm,
+                        );
+                        if (validationError != null) {
+                          _showError(context, validationError);
                           return;
                         }
 
