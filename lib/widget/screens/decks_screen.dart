@@ -681,12 +681,25 @@ class _DecksScreenState extends State<DecksScreen> {
                               ],
                             ),
                           ),
-                          IconButton(
-                            onPressed: () => _toggleExpanded(deck.id),
-                            icon: Icon(
-                              expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                              color: Colors.black87,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: () => _toggleExpanded(deck.id),
+                                icon: Icon(
+                                  expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              PopupMenuButton<_DeckAction>(
+                                onSelected: (action) => _handleMenuSelection(context, action, deck),
+                                itemBuilder: (context) => const [
+                                  PopupMenuItem(value: _DeckAction.edit, child: Text('Edit')),
+                                  PopupMenuItem(value: _DeckAction.delete, child: Text('Delete')),
+                                ],
+                                icon: const Icon(Icons.more_vert, color: Colors.black54),
+                              ),
+                            ],
                           ),
                         ],
                       ),

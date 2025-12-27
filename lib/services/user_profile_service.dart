@@ -6,11 +6,13 @@ class UserProfile {
   final String uid;
   final String? email;
   final String displayName;
+  final String? photoUrl;
 
   const UserProfile({
     required this.uid,
     required this.displayName,
     this.email,
+    this.photoUrl,
   });
 }
 
@@ -44,10 +46,14 @@ class UserProfileService {
     final displayName = data != null && data['displayName'] is String && (data['displayName'] as String).isNotEmpty
         ? data['displayName'] as String
         : (user.displayName ?? user.email ?? '');
+    final photoUrl = data != null && data['photoUrl'] is String && (data['photoUrl'] as String).isNotEmpty
+        ? data['photoUrl'] as String
+        : user.photoURL;
     return UserProfile(
       uid: user.uid,
       displayName: displayName,
       email: user.email,
+      photoUrl: photoUrl,
     );
   }
 
@@ -59,6 +65,7 @@ class UserProfileService {
     await _userDoc(uid).set({
       'displayName': displayName,
       'email': email,
+      'photoUrl': _auth.currentUser?.photoURL,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
@@ -73,6 +80,18 @@ class UserProfileService {
     await user.updateDisplayName(newName);
     await _userDoc(user.uid).set({
       'displayName': newName,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updatePhotoUrl(String url) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('User not logged in');
+    }
+    await user.updatePhotoURL(url);
+    await _userDoc(user.uid).set({
+      'photoUrl': url,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

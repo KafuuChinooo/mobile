@@ -206,6 +206,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _StreakStatsCard(progress: progress),
+                    const SizedBox(height: 20),
+                    _OverviewRow(
+                      totalDecks: _recentDecks.length,
+                      studiedCards: _recentDecks.fold<int>(0, (sum, d) => sum + d.cardCount),
+                    ),
                     const SizedBox(height: 40),
                     const Text(
                       'Previous decks',
@@ -473,6 +478,85 @@ class _StreakStatsCard extends StatelessWidget {
             value: progress.lastActiveDate == null
                 ? 'N/A'
                 : _formatDate(progress.lastActiveDate!),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OverviewRow extends StatelessWidget {
+  final int totalDecks;
+  final int studiedCards;
+
+  const _OverviewRow({
+    required this.totalDecks,
+    required this.studiedCards,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _OverviewCard(
+            label: 'Total decks',
+            value: '$totalDecks',
+            color: const Color(0xFF9D90FF),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _OverviewCard(
+            label: 'Studied cards',
+            value: '$studiedCards',
+            color: const Color(0xFF5CC6FF),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OverviewCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _OverviewCard({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.black.withOpacity(0.65),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),

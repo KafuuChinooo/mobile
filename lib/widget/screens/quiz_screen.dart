@@ -34,14 +34,12 @@ class _QuizScreenState extends State<QuizScreen> {
   String? _hintError;
   bool _hintRequested = false;
   final Map<String, String> _hintCache = {};
-  bool _prefetchingHints = false;
 
   @override
   void initState() {
     super.initState();
     _hintService = widget.hintService ?? AiHintService();
     _questions = widget.engine.buildQuestions(widget.cards);
-    _prefetchHints();
   }
 
   void _answerQuestion(String selectedAnswer) {
@@ -68,7 +66,6 @@ class _QuizScreenState extends State<QuizScreen> {
       _hintRequested = false;
       _hintCache.clear();
     });
-    _prefetchHints();
   }
 
   void _goToNextQuestion() {
@@ -88,51 +85,41 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
-  Future<void> _prefetchHints() async {
-    if (_questions.isEmpty || _prefetchingHints) return;
-    setState(() {
-      _prefetchingHints = true;
-    });
-    try {
-      final batch = await _hintService.generateHintsBatch(_questions);
-      if (!mounted) return;
-      setState(() {
-        _hintCache.addAll(batch);
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _hintError = 'Hint prefetch failed: $e';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _prefetchingHints = false;
-        });
-      }
-    }
-  }
-
   Future<void> _fetchHintForCurrent() async {
-    if (_questions.isEmpty || _hintLoading || _prefetchingHints) return;
+    if (_questions.isEmpty || _hintLoading) return;
     final question = _questions[_currentIndex];
-    // Serve from cache to avoid extra API calls.
+    setState(() {
+      _hintRequested = true;
+      _hintLoading = true;
+      _hintError = null;
+    });
+
+    // Serve from cache if available
     final cached = _hintCache[question.cardId];
     if (cached != null) {
       setState(() {
-        _hintRequested = true;
         _hint = cached;
-        _hintError = null;
+        _hintLoading = false;
       });
       return;
     }
 
-    // If not prefetched, avoid extra API calls; show error instead.
-    setState(() {
-      _hintRequested = true;
-      _hintError = 'Hint not preloaded.';
-      _hint = null;
-    });
+    try {
+      final hint = await _hintService.generateHint(term: question.term, answer: question.correctAnswer);
+      if (!mounted) return;
+      setState(() {
+        _hint = hint;
+        _hintCache[question.cardId] = hint;
+        _hintLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _hintError = 'Failed to fetch hint: $e';
+        _hint = null;
+        _hintLoading = false;
+      });
+    }
   }
 
   @override
@@ -402,7 +389,7 @@ class _HintPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget content;
     if (!hintRequested) {
-      content = const Text('Nhấn vào bóng đèn để tạo gợi ý.', style: TextStyle(color: Colors.grey));
+      content = const Text('Tap the bulb to generate a hint.', style: TextStyle(color: Colors.grey));
     } else if (loading) {
       content = const Text('Generating hint...', style: TextStyle(color: Colors.grey));
     } else if (error != null) {
@@ -454,3 +441,4 @@ class _HintPanel extends StatelessWidget {
     );
   }
 }
+

@@ -40,6 +40,17 @@ class AppBottomNavigationBar extends StatelessWidget {
     return item == currentItem ? const Color(0xFF7233FE) : Colors.grey;
   }
 
+  String _label(BottomNavItem item) {
+    switch (item) {
+      case BottomNavItem.home:
+        return 'Home';
+      case BottomNavItem.decks:
+        return 'Library';
+      case BottomNavItem.account:
+        return 'Account';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -54,20 +65,63 @@ class AppBottomNavigationBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            IconButton(
-              icon: Icon(Icons.home_outlined, size: 32, color: _iconColor(BottomNavItem.home)),
-              onPressed: () => _handleTap(context, BottomNavItem.home),
+            _NavItem(
+              icon: Icons.home_outlined,
+              label: _label(BottomNavItem.home),
+              color: _iconColor(BottomNavItem.home),
+              onTap: () => _handleTap(context, BottomNavItem.home),
             ),
-            IconButton(
-              icon: Icon(Icons.folder_open_outlined, size: 32, color: _iconColor(BottomNavItem.decks)),
-              onPressed: () => _handleTap(context, BottomNavItem.decks),
+            _NavItem(
+              icon: Icons.folder_open_outlined,
+              label: _label(BottomNavItem.decks),
+              color: _iconColor(BottomNavItem.decks),
+              onTap: () => _handleTap(context, BottomNavItem.decks),
             ),
-            IconButton(
-              icon: Icon(Icons.person_outline, size: 32, color: _iconColor(BottomNavItem.account)),
-              onPressed: () => _handleTap(context, BottomNavItem.account),
+            _NavItem(
+              icon: Icons.person_outline,
+              label: _label(BottomNavItem.account),
+              color: _iconColor(BottomNavItem.account),
+              onTap: () => _handleTap(context, BottomNavItem.account),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 28, color: color),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

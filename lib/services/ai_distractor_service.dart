@@ -29,11 +29,6 @@ class AiDistractorService implements DistractorProvider {
   @override
   Future<Map<String, List<String>>> generateBatch(List<DeckCard> cards) async {
     if (cards.isEmpty) return {};
-
-    final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
-    );
-
     final items = cards
         .map((c) => {
               'id': c.id,
@@ -42,16 +37,37 @@ class AiDistractorService implements DistractorProvider {
             })
         .toList();
 
-    final prompt = '''
-You are generating distractors (plausible wrong answers) for flashcards. Read each item and return JSON only, following the example structure exactly.
-Strict rules:
-- Output: JSON only, no markdown fences, no leading/trailing text.
-- Structure example (copy this shape):
-{"results":[{"id":"card1","distractors":["Đáp án sai 1","Đáp án sai 2","Đáp án sai 3"]},{"id":"card2","distractors":["Sai 1","Sai 2","Sai 3"]}]}
-- Per item: exactly 3 concise, plausible, unique distractors.
-- Safety: never match, paraphrase, or contain the correct answer; keep language consistent with the item.
-Items: ${jsonEncode(items)}
-''';
+    try {
+      return await _requestAndParse(items: items, cards: cards, strict: false);
+    } on FormatException {
+      // Retry once with a stricter prompt to avoid malformed JSON.
+      return await _requestAndParse(items: items, cards: cards, strict: true);
+    } on Exception {
+      // As a last resort, fall back to local generation to avoid breaking the game flow.
+      return _fallbackDistractors(cards);
+    }
+  }
+
+  void dispose() {
+    _client.close();
+  }
+
+  bool _equalsOrContains(String a, String b) {
+    final la = a.toLowerCase();
+    final lb = b.toLowerCase();
+    return la == lb || la.contains(lb) || lb.contains(la);
+  }
+
+  Future<Map<String, List<String>>> _requestAndParse({
+    required List<Map<String, String>> items,
+    required List<DeckCard> cards,
+    required bool strict,
+  }) async {
+    final uri = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
+    );
+
+    final prompt = _buildPrompt(items, strict: strict);
 
     final response = await _client.post(
       uri,
@@ -78,7 +94,19 @@ Items: ${jsonEncode(items)}
     }
 
     final parsedJson = _parseJsonBlock(rawText);
-    final results = parsedJson['results'];
+    dynamic results = parsedJson['results'];
+    if (results is String) {
+      try {
+        final inner = jsonDecode(results);
+        if (inner is Map && inner['results'] is List) {
+          results = inner['results'];
+        } else if (inner is List) {
+          results = inner;
+        }
+      } catch (_) {
+        // fall through
+      }
+    }
     if (results is! List) {
       throw FormatException('AI response missing results array: $rawText');
     }
@@ -108,14 +136,63 @@ Items: ${jsonEncode(items)}
     return map;
   }
 
-  void dispose() {
-    _client.close();
+  String _buildPrompt(List<Map<String, String>> items, {required bool strict}) {
+    final base = '''
+You generate exactly 3 distractors (wrong answers) for each flashcard item. Respond with VALID JSON only, one object, using DOUBLE QUOTES everywhere, no markdown, no prose, no single quotes.
+Schema (must match exactly):
+{"results":[{"id":"<id>","distractors":["d1","d2","d3"]},...]}
+Hard rules:
+- Output only one JSON object; do NOT wrap in ```; do NOT prefix with "json".
+- Each "distractors" array has exactly 3 unique, concise strings.
+- Language matches the item; never reveal or paraphrase the correct answer.
+- Use valid JSON (RFC 8259): double quotes only, no trailing commas, no extra text.
+Format example (structure only):
+{"results":[{"id":"card1","distractors":["Wrong A","Wrong B","Wrong C"]}]}
+Items: ${jsonEncode(items)}
+''';
+
+    if (!strict) return base;
+
+    return '''
+STRICT MODE: Return exactly one JSON object, nothing else. Use ONLY double quotes. Follow this schema exactly:
+{"results":[{"id":"<id>","distractors":["d1","d2","d3"]},...]}
+If you output anything else, the request fails. No markdown, no fences, no single quotes, no comments.
+Items: ${jsonEncode(items)}
+''';
   }
 
-  bool _equalsOrContains(String a, String b) {
-    final la = a.toLowerCase();
-    final lb = b.toLowerCase();
-    return la == lb || la.contains(lb) || lb.contains(la);
+  Map<String, List<String>> _fallbackDistractors(List<DeckCard> cards) {
+    // Simple non-AI fallback: use other card definitions as distractors.
+    final map = <String, List<String>>{};
+    for (final card in cards) {
+      final wrongs = <String>[];
+      final seen = <String>{};
+      final correct = card.definition.toLowerCase();
+
+      void addIfValid(String? value) {
+        final trimmed = value?.trim();
+        if (trimmed == null || trimmed.isEmpty) return;
+        final lower = trimmed.toLowerCase();
+        if (lower == correct) return;
+        if (!seen.add(lower)) return;
+        wrongs.add(trimmed);
+      }
+
+      for (final d in card.distractors ?? <String>[]) {
+        addIfValid(d);
+        if (wrongs.length >= 3) break;
+      }
+      for (final other in cards) {
+        if (other.id == card.id) continue;
+        addIfValid(other.definition);
+        if (wrongs.length >= 3) break;
+      }
+      while (wrongs.length < 3) {
+        addIfValid('Option ${wrongs.length + 1}');
+      }
+      map[card.id] = wrongs.take(3).toList();
+    }
+    return map;
   }
 
   Map<String, dynamic> _parseJsonBlock(String rawText) {
@@ -164,6 +241,28 @@ Items: ${jsonEncode(items)}
         if (decoded is Map<String, dynamic>) return decoded;
       }
     } catch (_) {/* fallthrough */}
+
+    // If the whole payload is a JSON string with escaped quotes, attempt a direct decode.
+    try {
+      final direct = jsonDecode(text);
+      if (direct is Map<String, dynamic>) return direct;
+    } catch (_) {/* fallthrough */}
+
+    // If "results" is returned as a single-quoted JSON string, extract and decode it.
+    final resultsStringMatch = RegExp("\"results\"\\s*:\\s*'(\\[.*\\])'", dotAll: true).firstMatch(text);
+    if (resultsStringMatch != null) {
+      final rawList = resultsStringMatch.group(1);
+      if (rawList != null) {
+        try {
+          final list = jsonDecode(rawList);
+          if (list is List) {
+            return {'results': list};
+          }
+        } catch (_) {
+          // ignore and continue
+        }
+      }
+    }
 
     // Last resort: manual extraction of entries like 'id':'...','distractors':[...]
     final entries = <Map<String, dynamic>>[];

@@ -252,7 +252,10 @@ class _WaterSortScreenState extends State<WaterSortScreen> {
             child: const Text('Play again'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+            onPressed: () {
+              Navigator.of(context).pop(); // close dialog
+              Navigator.of(context).pop(); // close game screen
+            },
             child: const Text('Close'),
           ),
         ],

@@ -7,7 +7,7 @@ import 'package:flash_card/services/quiz_engine.dart';
 class AiHintService {
   AiHintService({http.Client? client, String? model})
     : _client = client ?? http.Client(),
-      _model = model ?? 'gemma-3-27b-it';
+      _model = model ?? 'gemma-3-27b-it'; // align with question/distractor model
 
   static const String _apiKey = 'AIzaSyBIsETq9CTNcM6wSMHuLujvAgCQblWR_A0';
   final String _model;
@@ -20,7 +20,7 @@ class AiHintService {
     _assertKey();
 
     final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1/models/$_model:generateContent?key=$_apiKey',
+      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
     );
 
     final prompt = '''
@@ -97,7 +97,7 @@ Return exactly one object with the field "hint".''';
     if (questions.isEmpty) return {};
 
     final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1/models/$_model:generateContent?key=$_apiKey',
+      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
     );
 
     final items = questions
