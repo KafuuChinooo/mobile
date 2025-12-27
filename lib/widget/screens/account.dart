@@ -1,14 +1,11 @@
-import 'dart:io';
-
 import 'package:flash_card/helper/router.dart';
 import 'package:flash_card/services/auth_service.dart';
 import 'package:flash_card/services/user_profile_service.dart';
 import 'package:flash_card/widget/app_bottom_nav.dart';
 import 'package:flash_card/widget/app_scaffold.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AccountScreen extends StatefulWidget {
   final bool showBottomNav;
@@ -28,9 +25,9 @@ class _AccountScreenState extends State<AccountScreen> {
   final _nameController = TextEditingController();
   bool _loading = true;
   bool _saving = false;
-  bool _uploadingAvatar = false;
   UserProfile? _profile;
   String? _error;
+  String _selectedAvatar = _defaultAvatar;
 
   @override
   void initState() {
@@ -51,10 +48,13 @@ class _AccountScreenState extends State<AccountScreen> {
     });
     try {
       final profile = await UserProfileService.instance.fetchCurrentProfile();
+      final prefs = await SharedPreferences.getInstance();
+      final savedAvatar = prefs.getString('selected_avatar');
       if (!mounted) return;
       setState(() {
         _profile = profile;
         _nameController.text = profile?.displayName ?? '';
+        _selectedAvatar = savedAvatar ?? _defaultAvatar;
         _loading = false;
       });
     } catch (e) {
@@ -137,16 +137,14 @@ class _AccountScreenState extends State<AccountScreen> {
                           ),
                           child: CircleAvatar(
                             radius: 48,
-                            backgroundImage: _profile?.photoUrl != null && _profile!.photoUrl!.isNotEmpty
-                                ? NetworkImage(_profile!.photoUrl!)
-                                : const AssetImage('images/avatar.jpg') as ImageProvider,
+                            backgroundImage: AssetImage(_selectedAvatar),
                           ),
                         ),
                         Positioned(
                           right: 0,
                           bottom: 0,
                           child: InkWell(
-                            onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
+                            onTap: _showAvatarSelector,
                             borderRadius: BorderRadius.circular(14),
                             child: Container(
                               width: 32,
@@ -162,12 +160,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                   ),
                                 ],
                               ),
-                              child: _uploadingAvatar
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(6),
-                                      child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
-                                    )
-                                  : const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                              child: const Icon(Icons.edit, size: 16, color: Colors.white),
                             ),
                           ),
                         ),
@@ -386,60 +379,70 @@ class _AccountScreenState extends State<AccountScreen> {
     confirmController.dispose();
   }
 
-  Future<void> _pickAndUploadAvatar() async {
-    final user = AuthService.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You need to be signed in to change your avatar.')),
-      );
-      return;
-    }
-
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 640,
-      maxHeight: 640,
-      imageQuality: 80,
+  Future<void> _showAvatarSelector() async {
+    final options = [_defaultAvatar, ..._presetAvatars];
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Choose an avatar',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: options.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemBuilder: (context, index) {
+                  final path = options[index];
+                  final isSelected = path == _selectedAvatar;
+                  return GestureDetector(
+                    onTap: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('selected_avatar', path);
+                      if (!mounted) return;
+                      setState(() => _selectedAvatar = path);
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Avatar updated.')),
+                      );
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: isSelected ? const Color(0xFF9D90FF) : Colors.transparent,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.asset(path, fit: BoxFit.cover),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
-    if (picked == null) return;
-
-    setState(() => _uploadingAvatar = true);
-    try {
-      final file = File(picked.path);
-      final ref = FirebaseStorage.instance.ref().child('avatars/${user.uid}.jpg');
-      final uploadTask = ref.putFile(file, SettableMetadata(contentType: 'image/jpeg'));
-      await uploadTask.whenComplete(() {});
-      final url = await ref.getDownloadURL();
-      await UserProfileService.instance.updatePhotoUrl(url);
-      await AuthService.instance.currentUser?.reload();
-      await _loadProfile();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Avatar updated.')),
-        );
-      }
-    } on FirebaseException catch (e) {
-      final code = e.code;
-      final msg = code == 'object-not-found'
-          ? 'Upload failed (object not found). Check Storage rules and bucket path.'
-          : e.message ?? 'Failed to update avatar.';
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update avatar: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _uploadingAvatar = false);
-      }
-    }
   }
 
   Future<void> _showEditUsernameDialog() async {
@@ -525,6 +528,16 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 }
+
+const List<String> _presetAvatars = [
+  'images/avatar/1.jpg',
+  'images/avatar/2.jpg',
+  'images/avatar/3.jpg',
+  'images/avatar/4.jpg',
+  'images/avatar/5.jpg',
+];
+
+const String _defaultAvatar = 'images/avatar.jpg';
 
 class _PersonalInfoSection extends StatelessWidget {
   final Color panelColor;

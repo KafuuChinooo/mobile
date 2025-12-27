@@ -8,6 +8,7 @@ import 'package:flash_card/widget/app_scaffold.dart';
 import 'package:flash_card/widget/screens/add_deck_screen.dart';
 import 'package:flash_card/widget/screens/flashcard.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Data management dashboard
 class HomeDashboardScreen extends StatefulWidget {
@@ -37,6 +38,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   String? _deckError;
   String? _displayName;
   bool _loadingProfile = true;
+  String _avatarPath = 'images/avatar.jpg';
 
   @override
   void initState() {
@@ -60,9 +62,12 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       _loadingProfile = true;
     });
     final profile = await UserProfileService.instance.fetchCurrentProfile();
+    final prefs = await SharedPreferences.getInstance();
+    final savedAvatar = prefs.getString('selected_avatar');
     if (!mounted) return;
     setState(() {
       _displayName = profile?.displayName;
+      _avatarPath = savedAvatar ?? _avatarPath;
       _loadingProfile = false;
     });
   }
@@ -192,6 +197,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 loading: _loadingProgress,
                 loadingProfile: _loadingProfile,
                 displayName: _displayName,
+                avatarPath: _avatarPath,
                 onCheckIn: _checkInToday,
               ),
               const SizedBox(height: 20),
@@ -246,6 +252,7 @@ class _DashboardHeader extends StatelessWidget {
   final bool loading;
   final bool loadingProfile;
   final String? displayName;
+  final String avatarPath;
   final VoidCallback onCheckIn;
 
   const _DashboardHeader({
@@ -255,6 +262,7 @@ class _DashboardHeader extends StatelessWidget {
     required this.loading,
     required this.loadingProfile,
     required this.displayName,
+    required this.avatarPath,
     required this.onCheckIn,
   });
 
@@ -295,9 +303,9 @@ class _DashboardHeader extends StatelessWidget {
                   color: Colors.white,
                 ),
                 padding: const EdgeInsets.all(4),
-                child: const CircleAvatar(
+                child: CircleAvatar(
                   radius: 32,
-                  backgroundImage: AssetImage('images/avatar.jpg'),
+                  backgroundImage: AssetImage(avatarPath),
                 ),
               ),
               const SizedBox(width: 16),
