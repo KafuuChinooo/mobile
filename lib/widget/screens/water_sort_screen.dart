@@ -23,9 +23,9 @@ class WaterSortScreen extends StatefulWidget {
 class _WaterSortScreenState extends State<WaterSortScreen> {
   static const int _tubeCapacity = 4;
   static const int _bonusMoves = 3;
-  static const Color _accent = Color(0xFF7B61FF);
-  static const Color _bg = Color(0xFF0F0F0F);
-  static const Color _outline = Colors.white;
+  static const Color _accent = Color(0xFF9D90FF); // align with app purple
+  static const Color _bg = Color(0xFFF7F7FB); // light app background
+  static const Color _outline = Color(0xFFDAD2FF);
   final Random _rand = Random();
 
   // Fixed palette (3 colors) to mirror the reference look.
@@ -265,8 +265,8 @@ class _WaterSortScreenState extends State<WaterSortScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.deckName} - Water Sort'),
-        backgroundColor: _bg,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
         centerTitle: true,
         elevation: 0,
       ),
@@ -277,14 +277,14 @@ class _WaterSortScreenState extends State<WaterSortScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Row(
               children: [
-                _StatusChip(label: 'Moves left', value: _movesLeft.toString()),
+                _StatusChip(label: 'Moves left', value: _movesLeft.toString(), accent: _accent),
                 const SizedBox(width: 8),
-                _StatusChip(label: 'Tubes', value: '${_tubes.length}'),
+                _StatusChip(label: 'Tubes', value: '${_tubes.length}', accent: _accent),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: () => setState(_initGame),
-                  icon: const Icon(Icons.refresh, size: 18, color: Colors.white),
-                  label: const Text('Reset', style: TextStyle(color: Colors.white)),
+                  icon: const Icon(Icons.refresh, size: 18, color: Colors.black87),
+                  label: const Text('Reset', style: TextStyle(color: Colors.black87)),
                 ),
               ],
             ),
@@ -295,33 +295,38 @@ class _WaterSortScreenState extends State<WaterSortScreen> {
               alignment: Alignment.centerLeft,
               child: Text(
                 'Every 3 moves a question appears. Answer correctly to gain 3 more moves.',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: Colors.black54),
               ),
             ),
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 5,
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 16,
-                childAspectRatio: 0.28,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    mainAxisSpacing: 20,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.28,
+                  ),
+                  itemCount: _tubes.length,
+                  itemBuilder: (context, index) {
+                    final tube = _tubes[index];
+                    final selected = _selectedTube == index;
+                    return _TubeWidget(
+                      capacity: _tubeCapacity,
+                      colors: tube,
+                      selected: selected,
+                      accent: _accent,
+                      outline: _outline,
+                      onTap: () => _onTubeTap(index),
+                    );
+                  },
+                ),
               ),
-              itemCount: _tubes.length,
-              itemBuilder: (context, index) {
-                final tube = _tubes[index];
-                final selected = _selectedTube == index;
-                return _TubeWidget(
-                  capacity: _tubeCapacity,
-                  colors: tube,
-                  selected: selected,
-                  accent: _accent,
-                  outline: _outline,
-                  onTap: () => _onTubeTap(index),
-                );
-              },
             ),
           ),
         ],
@@ -364,6 +369,15 @@ class _TubeWidget extends StatelessWidget {
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: selected ? accent : outline, width: 3),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: accent.withOpacity(0.25),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : [],
           ),
           padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
           child: Column(
@@ -397,24 +411,25 @@ class _TubeWidget extends StatelessWidget {
 class _StatusChip extends StatelessWidget {
   final String label;
   final String value;
+  final Color accent;
 
-  const _StatusChip({required this.label, required this.value});
+  const _StatusChip({required this.label, required this.value, required this.accent});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: accent.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
+        border: Border.all(color: accent.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
         ],
       ),
     );
