@@ -95,6 +95,7 @@ Return exactly one object with the field "hint".''';
   /// Batch hint generation to reduce API calls. Returns map of cardId -> hint.
   Future<Map<String, String>> generateHintsBatch(List<QuizQuestion> questions) async {
     if (questions.isEmpty) return {};
+    final fallback = _fallbackHints(questions);
 
     final uri = Uri.parse(
       'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
@@ -158,11 +159,11 @@ Items: ${jsonEncode(items)}
       // Fallback: try to parse single hint (unlikely to succeed for batch).
     }
 
-    if (map.isEmpty) {
-      throw FormatException('AI hint batch response is not valid JSON: $rawText');
+    if (map.isNotEmpty) {
+      return map;
     }
 
-    return map;
+    return fallback;
   }
 
   String _extractJson(String rawText) {
@@ -182,5 +183,20 @@ Items: ${jsonEncode(items)}
     if (_apiKey.isEmpty || _apiKey == 'PUT_YOUR_API_KEY_HERE') {
       throw StateError('Set your Gemini API key in AiHintService._apiKey before calling generateHint.');
     }
+  }
+
+  Map<String, String> _fallbackHints(List<QuizQuestion> questions) {
+    final map = <String, String>{};
+    for (final q in questions) {
+      final term = q.term.trim();
+      final answer = q.correctAnswer.trim();
+      final fallback = term.isNotEmpty
+          ? 'Think about the main idea of "$term".'
+          : (answer.isNotEmpty ? 'Recall the key concept you studied for this card.' : 'Review this card again.');
+      if (q.cardId.isNotEmpty) {
+        map[q.cardId] = fallback;
+      }
+    }
+    return map;
   }
 }

@@ -51,6 +51,7 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
   List<DeckCard> _cards = [];
   bool _isLoading = true;
   String? _error;
+  bool _showLearned = true;
   int _currentQuestionIndex = 0;
   bool _showAnswer = false;
 
@@ -81,14 +82,37 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
     }
   }
 
-  Future<void> _saveProgress() async {
+  double _learnedProgress({bool completeIfNoneMarked = false}) {
+    if (_cards.isEmpty) return 0.0;
+    final learnedCount = _cards.where((c) => c.learned).length;
+    if (learnedCount == 0 && completeIfNoneMarked) return 1.0;
+    return learnedCount / _cards.length;
+  }
+
+  Future<void> _saveProgress({bool completeIfNoneMarked = false}) async {
     if (_cards.isEmpty) return;
-    final progress = _cards.isEmpty ? 0.0 : (_currentQuestionIndex) / _cards.length;
+    final progress = _learnedProgress(completeIfNoneMarked: completeIfNoneMarked);
+    final lastIndex = _currentQuestionIndex.clamp(0, _cards.length - 1).toInt();
     await deckRepository.updateDeckProgress(
       widget.deck.id,
       progress,
-      _currentQuestionIndex,
+      lastIndex,
     );
+  }
+
+  List<DeckCard> get _visibleCards {
+    if (_showLearned) return _cards;
+    return _cards.where((c) => !c.learned).toList();
+  }
+
+  Future<void> _toggleLearned(DeckCard card) async {
+    final updated = card.copyWith(learned: !card.learned);
+    setState(() {
+      final idx = _cards.indexWhere((c) => c.id == card.id);
+      if (idx != -1) _cards[idx] = updated;
+    });
+    await deckRepository.updateCardLearned(widget.deck.id, card.id, updated.learned);
+    await _saveProgress();
   }
 
   void _onToggleAnswerVisibility() {
@@ -112,7 +136,9 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
   }
 
   void _onNextQuestion() {
-    if (_currentQuestionIndex < _cards.length - 1) {
+    final total = _visibleCards.length;
+    if (total == 0) return;
+    if (_currentQuestionIndex < total - 1) {
       setState(() {
         _currentQuestionIndex++;
         if (_showAnswer) {
@@ -124,6 +150,26 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
     } else {
       _showCompletionDialog();
     }
+  }
+
+  Future<void> _finalizeCompletion() async {
+    if (_cards.isEmpty) {
+      await _saveProgress(completeIfNoneMarked: true);
+      return;
+    }
+
+    final learnedCount = _cards.where((c) => c.learned).length;
+    if (learnedCount == 0) {
+      final updated = _cards.map((c) => c.copyWith(learned: true)).toList();
+      setState(() {
+        _cards = updated;
+      });
+      for (final card in updated) {
+        await deckRepository.updateCardLearned(widget.deck.id, card.id, true);
+      }
+    }
+
+    await _saveProgress(completeIfNoneMarked: true);
   }
 
   void _showCompletionDialog() {
@@ -151,8 +197,9 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
+                await _finalizeCompletion();
+                if (!context.mounted) return;
                 Navigator.of(context).pop();
-                await deckRepository.updateDeckProgress(widget.deck.id, 1.0, 0);
               },
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7233FE)),
               child: const Text("Finish", style: TextStyle(color: Colors.white)),
@@ -177,15 +224,38 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
       );
     }
 
-    final currentCard = _cards[_currentQuestionIndex];
+    final visible = _visibleCards;
+    if (visible.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('All cards are marked learned.', style: TextStyle(fontSize: 16, color: Colors.grey)),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => setState(() => _showLearned = true),
+              child: const Text('Show learned cards'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_currentQuestionIndex >= visible.length) {
+      _currentQuestionIndex = 0;
+    }
+    final currentCard = visible[_currentQuestionIndex];
+    final totalCards = _cards.length;
+    final learnedCount = _cards.where((c) => c.learned).length;
+    final learnedProgress = _learnedProgress();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 16),
         ProgressBar(
-          currentIndex: _currentQuestionIndex,
-          totalQuestions: _cards.length,
+          learnedCount: learnedCount,
+          totalQuestions: totalCards,
+          progressValue: learnedProgress,
         ),
         const SizedBox(height: 40),
         FlipCard(
@@ -209,15 +279,35 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
           onNextQuestion: _onNextQuestion,
           onToggleAnswerVisibility: _onToggleAnswerVisibility,
           currentQuestionIndex: _currentQuestionIndex,
-          quizQuestionLength: _cards.length,
+          quizQuestionLength: visible.length,
           showAnswer: _showAnswer,
         ),
         const Spacer(),
         Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilterChip(
+                label: const Text('Show learned'),
+                selected: _showLearned,
+                onSelected: (v) => setState(() => _showLearned = v),
+              ),
+              const SizedBox(width: 12),
+              TextButton.icon(
+                onPressed: () => _toggleLearned(currentCard),
+                icon: Icon(currentCard.learned ? Icons.check_circle : Icons.check_circle_outline),
+                label: Text(currentCard.learned ? 'Mark unlearned' : 'Mark learned'),
+              ),
+            ],
+          ),
+        ),
+        Padding(
           padding: const EdgeInsets.only(bottom: 20.0),
           child: TextButton.icon(
-            onPressed: () {
-              _saveProgress();
+            onPressed: () async {
+              await _saveProgress();
+              if (!context.mounted) return;
               Navigator.of(context).pop();
             },
             icon: const Icon(Icons.save_alt, color: Colors.grey),
@@ -230,22 +320,28 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
 }
 
 class ProgressBar extends StatelessWidget {
-  final int currentIndex;
+  final double progressValue;
+  final int learnedCount;
   final int totalQuestions;
 
-  const ProgressBar({super.key, required this.currentIndex, required this.totalQuestions});
+  const ProgressBar({
+    super.key,
+    required this.progressValue,
+    required this.learnedCount,
+    required this.totalQuestions,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final progressValue = totalQuestions > 0 ? (currentIndex + 1) / totalQuestions : 0.0;
-    final progressPercentage = (progressValue * 100).round();
+    final clampedProgress = progressValue.clamp(0.0, 1.0).toDouble();
+    final progressPercentage = (clampedProgress * 100).round();
 
     return Column(
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: LinearProgressIndicator(
-            value: progressValue,
+            value: clampedProgress,
             minHeight: 8,
             backgroundColor: const Color(0xFFE0E0E0),
             valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF7233FE)),
@@ -256,7 +352,7 @@ class ProgressBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('$progressPercentage%', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            Text('${currentIndex + 1} of $totalQuestions', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text('$learnedCount of $totalQuestions learned', style: const TextStyle(color: Colors.grey, fontSize: 12)),
           ],
         ),
       ],

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flash_card/data/deck_repository.dart';
 import 'package:flash_card/model/deck.dart';
 import 'package:flash_card/helper/text_normalizer.dart';
@@ -177,21 +179,43 @@ class _DecksScreenState extends State<DecksScreen> {
     if (choice == null) return;
 
     final progress = ValueNotifier<double>(0);
+    final percentDisplay = ValueNotifier<int>(0);
+    Timer? percentTicker;
+    void startPercentTicker() {
+      final start = DateTime.now();
+      percentTicker?.cancel();
+      percentTicker = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+        final elapsed = DateTime.now().difference(start).inMilliseconds;
+        final value = ((elapsed / 10000) * 99).clamp(0, 99).toInt();
+        percentDisplay.value = value;
+        if (value >= 99) {
+          timer.cancel();
+        }
+      });
+    }
+
+    startPercentTicker();
     final dialog = showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => ValueListenableBuilder<double>(
-        valueListenable: progress,
-        builder: (context, value, __) {
-          final percent = (value * 100).clamp(0, 100).toInt();
+      builder: (_) => ValueListenableBuilder<int>(
+        valueListenable: percentDisplay,
+        builder: (context, display, __) {
+          final visualProgress = (display / 99).clamp(0.0, 1.0);
           return AlertDialog(
-            title: const Text('Preparing questions'),
+            title: const Text(
+              'Preparing questions',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                LinearProgressIndicator(value: value.clamp(0.0, 1.0)),
-                const SizedBox(height: 12),
-                Text('$percent%'),
+                LinearProgressIndicator(value: visualProgress),
+                const SizedBox(height: 10),
+                Text(
+                  '$display%',
+                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                ),
               ],
             ),
           );
@@ -211,6 +235,9 @@ class _DecksScreenState extends State<DecksScreen> {
       }
       if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
       await dialog;
+      percentTicker?.cancel();
+      percentDisplay.dispose();
+      progress.dispose();
       return;
     } catch (e) {
       if (mounted) {
@@ -218,13 +245,19 @@ class _DecksScreenState extends State<DecksScreen> {
       }
       if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
       await dialog;
-      return;
-    } finally {
+      percentTicker?.cancel();
+      percentDisplay.dispose();
       progress.dispose();
+      return;
     }
+
+    percentDisplay.value = 99;
+    percentTicker?.cancel();
 
     if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
     await dialog;
+    percentDisplay.dispose();
+    progress.dispose();
 
     if (!mounted) return;
 

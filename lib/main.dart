@@ -45,7 +45,7 @@ class FlashcardApp extends StatelessWidget {
           useMaterial3: true,
         ),
         themeMode: ThemeMode.system,
-        title: 'FlashCard',
+        title: 'Memzy',
         initialRoute: initialRoute,
         onGenerateRoute: AppRouter.generateRoute,
       ),

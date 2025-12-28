@@ -7,6 +7,7 @@ class DeckCard {
   final String definition;
   final String? imageUrl;
   final List<String>? distractors;
+  final bool learned;
 
   DeckCard({
     String? id,
@@ -14,6 +15,7 @@ class DeckCard {
     required this.definition,
     this.imageUrl,
     this.distractors,
+    this.learned = false,
   }) : id = id ?? const Uuid().v4();
 
   // Backward compatibility getters
@@ -26,6 +28,7 @@ class DeckCard {
     String? definition,
     String? imageUrl,
     List<String>? distractors,
+    bool? learned,
   }) {
     return DeckCard(
       id: id ?? this.id,
@@ -33,6 +36,7 @@ class DeckCard {
       definition: definition ?? this.definition,
       imageUrl: imageUrl ?? this.imageUrl,
       distractors: distractors ?? this.distractors,
+      learned: learned ?? this.learned,
     );
   }
 
@@ -44,6 +48,7 @@ class DeckCard {
         'back': definition,
         'imageUrl': imageUrl,
         'distractors': distractors,
+        'learned': learned,
       };
 
   factory DeckCard.fromJson(Map<String, dynamic> json) {
@@ -59,6 +64,7 @@ class DeckCard {
       definition: (json['definition'] ?? json['back'] ?? '') as String,
       imageUrl: json['imageUrl'] as String?,
       distractors: parsedDistractors,
+      learned: (json['learned'] ?? false) as bool,
     );
   }
 }

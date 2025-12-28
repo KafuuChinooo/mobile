@@ -47,6 +47,7 @@ class AiDistractorService implements DistractorProvider {
     String? deckCategory,
   }) async {
     if (cards.isEmpty) return {};
+    final fallback = _fallbackDistractors(deckContext ?? cards);
     final items = cards
         .map((c) => {
               'id': c.id,
@@ -68,19 +69,23 @@ class AiDistractorService implements DistractorProvider {
       );
     } on FormatException {
       // Retry once with a stricter prompt to avoid malformed JSON.
-      return await _requestAndParse(
-        items: items,
-        cards: cards,
-        fullDeck: deckContext ?? cards,
-        deckTitle: deckTitle,
-        deckDescription: deckDescription,
-        deckTags: deckTags,
-        deckCategory: deckCategory,
-        strict: true,
-      );
-    } on Exception {
+      try {
+        return await _requestAndParse(
+          items: items,
+          cards: cards,
+          fullDeck: deckContext ?? cards,
+          deckTitle: deckTitle,
+          deckDescription: deckDescription,
+          deckTags: deckTags,
+          deckCategory: deckCategory,
+          strict: true,
+        );
+      } catch (_) {
+        return fallback;
+      }
+    } catch (_) {
       // As a last resort, fall back to local generation to avoid breaking the game flow.
-      return _fallbackDistractors(deckContext ?? cards);
+      return fallback;
     }
   }
 

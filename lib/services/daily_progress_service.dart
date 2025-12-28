@@ -20,6 +20,7 @@ class DailyProgressSnapshot {
   final bool isTodayDone;
   final DateTime? lastActiveDate;
   final List<DayCheckin> week;
+  final List<DateTime> recentDates;
 
   const DailyProgressSnapshot({
     required this.currentStreak,
@@ -27,6 +28,7 @@ class DailyProgressSnapshot {
     required this.isTodayDone,
     required this.lastActiveDate,
     required this.week,
+    required this.recentDates,
   });
 
   const DailyProgressSnapshot.empty()
@@ -34,7 +36,8 @@ class DailyProgressSnapshot {
         longestStreak = 0,
         isTodayDone = false,
         lastActiveDate = null,
-        week = const [];
+        week = const [],
+        recentDates = const [];
 }
 
 class DailyProgressService {
@@ -93,6 +96,7 @@ class DailyProgressService {
       isTodayDone: weekKeys.contains(todayKey) || recentDates.any((d) => _keyForDate(d) == todayKey),
       lastActiveDate: recentDates.isEmpty ? null : recentDates.first,
       week: week,
+      recentDates: recentDates,
     );
   }
 

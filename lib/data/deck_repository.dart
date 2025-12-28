@@ -14,6 +14,7 @@ abstract class DeckRepository {
   Future<void> markDeckOpened(String deckId);
   Future<void> updateDeckProgress(String deckId, double progress, int lastStudiedIndex);
   Future<void> updateCardDistractors(String deckId, String cardId, List<String> distractors);
+  Future<void> updateCardLearned(String deckId, String cardId, bool learned);
 }
 
 final DeckRepository deckRepository = FirestoreDeckRepository();
@@ -168,6 +169,19 @@ class FirestoreDeckRepository implements DeckRepository {
           .update({'distractors': distractors});
     } catch (e) {
       print('Error updating distractors: $e');
+    }
+  }
+
+  @override
+  Future<void> updateCardLearned(String deckId, String cardId, bool learned) async {
+    try {
+      await _getDecksCollection()
+          .doc(deckId)
+          .collection('cards')
+          .doc(cardId)
+          .update({'learned': learned});
+    } catch (e) {
+      print('Error updating learned status: $e');
     }
   }
 }

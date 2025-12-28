@@ -9,6 +9,7 @@ import 'package:flash_card/widget/screens/add_deck_screen.dart';
 import 'package:flash_card/widget/screens/flashcard.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 // Data management dashboard
 class HomeDashboardScreen extends StatefulWidget {
@@ -39,6 +40,48 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   String? _displayName;
   bool _loadingProfile = true;
   String _avatarPath = 'images/avatar.jpg';
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+
+  void _showCalendar(DailyProgressSnapshot progress) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: 0.72,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: _CheckinCalendarCard(
+              progress: progress,
+              focusedDay: _focusedDay,
+              selectedDay: _selectedDay,
+              onDaySelected: (selected, focused) {
+                setState(() {
+                  _selectedDay = selected;
+                  _focusedDay = focused;
+                });
+              },
+              onPageChanged: (focused) {
+                setState(() {
+                  _focusedDay = focused;
+                });
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleCheckInTap() async {
+    if (_loadingProgress) return;
+    final alreadyDone = _progress?.isTodayDone ?? false;
+    if (!alreadyDone) {
+      await _checkInToday();
+    }
+  }
 
   @override
   void initState() {
@@ -198,7 +241,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 loadingProfile: _loadingProfile,
                 displayName: _displayName,
                 avatarPath: _avatarPath,
-                onCheckIn: _checkInToday,
+                onCheckIn: _handleCheckInTap,
+                onShowCalendar: () => _showCalendar(progress),
               ),
               const SizedBox(height: 20),
               if (_progressError != null)
@@ -217,7 +261,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       totalDecks: _recentDecks.length,
                       studiedCards: _recentDecks.fold<int>(0, (sum, d) => sum + d.cardCount),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 20),
                     const Text(
                       'Previous decks',
                       style: TextStyle(
@@ -254,6 +298,7 @@ class _DashboardHeader extends StatelessWidget {
   final String? displayName;
   final String avatarPath;
   final VoidCallback onCheckIn;
+  final VoidCallback onShowCalendar;
 
   const _DashboardHeader({
     required this.accent,
@@ -264,6 +309,7 @@ class _DashboardHeader extends StatelessWidget {
     required this.displayName,
     required this.avatarPath,
     required this.onCheckIn,
+    required this.onShowCalendar,
   });
 
   @override
@@ -334,67 +380,71 @@ class _DashboardHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 30),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.local_fire_department, color: Colors.orange, size: 35),
-                        const SizedBox(width: 10),
-                        Text(
-                          '${progress.currentStreak}-day streak',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
+          GestureDetector(
+            behavior: HitTestBehavior.deferToChild,
+            onTap: onShowCalendar,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.local_fire_department, color: Colors.orange, size: 35),
+                          const SizedBox(width: 10),
+                          Text(
+                            '${progress.currentStreak}-day streak',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    TextButton(
-                      onPressed: loading || progress.isTodayDone ? null : onCheckIn,
-                      child: Text(progress.isTodayDone ? 'Checked in' : 'Check in'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  progress.isTodayDone
-                      ? 'You logged activity today. Keep it going!'
-                      : 'Log one session today to keep your streak.',
-                  style: const TextStyle(color: Colors.black54),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: week
-                      .map(
-                        (day) => _DayCircle(
-                      label: _weekdayLabel(day.date),
-                      active: day.done,
-                      isToday: _isSameDate(day.date, DateTime.now()),
-                    ),
-                  )
-                      .toList(),
-                ),
-              ],
+                        ],
+                      ),
+                      TextButton(
+                        onPressed: loading ? null : onCheckIn,
+                        child: Text(progress.isTodayDone ? 'Checked in' : 'Check in'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    progress.isTodayDone
+                        ? 'You logged activity today. Keep it going!'
+                        : 'Log one session today to keep your streak.',
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: week
+                        .map(
+                          (day) => _DayCircle(
+                        label: _weekdayLabel(day.date),
+                        active: day.done,
+                        isToday: _isSameDate(day.date, DateTime.now()),
+                      ),
+                    )
+                        .toList(),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -520,6 +570,138 @@ class _OverviewRow extends StatelessWidget {
             value: '$studiedCards',
             color: const Color(0xFF5CC6FF),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CheckinCalendarCard extends StatelessWidget {
+  final DailyProgressSnapshot progress;
+  final DateTime focusedDay;
+  final DateTime? selectedDay;
+  final void Function(DateTime selectedDay, DateTime focusedDay) onDaySelected;
+  final void Function(DateTime focusedDay) onPageChanged;
+
+  const _CheckinCalendarCard({
+    required this.progress,
+    required this.focusedDay,
+    required this.selectedDay,
+    required this.onDaySelected,
+    required this.onPageChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final completedDays = progress.recentDates.map(DateUtils.dateOnly).toSet();
+    final today = DateTime.now();
+    final firstDay = DateTime.utc(today.year - 1, 1, 1);
+    final lastDay = DateTime.utc(today.year + 1, 12, 31);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Check-in calendar',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Row(
+                children: const [
+                  _LegendDot(color: Color(0xFFFFA500), label: 'Checked'),
+                  SizedBox(width: 12),
+                  _LegendDot(color: Color(0xFF7233FE), label: 'Today'),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TableCalendar(
+            firstDay: firstDay,
+            lastDay: lastDay,
+            focusedDay: focusedDay,
+            calendarFormat: CalendarFormat.month,
+            selectedDayPredicate: (day) => selectedDay != null && isSameDay(day, selectedDay),
+            eventLoader: (day) {
+              return completedDays.contains(DateUtils.dateOnly(day)) ? ['checked'] : [];
+            },
+            onDaySelected: onDaySelected,
+            onPageChanged: onPageChanged,
+            headerStyle: const HeaderStyle(
+              formatButtonVisible: false,
+              titleCentered: true,
+              titleTextStyle: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            calendarStyle: CalendarStyle(
+              todayDecoration: BoxDecoration(
+                color: const Color(0xFF7233FE).withOpacity(0.18),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF7233FE), width: 1.6),
+              ),
+              selectedDecoration: const BoxDecoration(
+                color: Color(0xFF7233FE),
+                shape: BoxShape.circle,
+              ),
+              markerDecoration: const BoxDecoration(
+                color: Color(0xFFFFA500),
+                shape: BoxShape.circle,
+              ),
+              markersAlignment: Alignment.bottomCenter,
+              outsideDaysVisible: false,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _LegendDot({
+    required this.color,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Colors.black87),
         ),
       ],
     );
@@ -677,8 +859,9 @@ class _RecentDeckSection extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 180,
+      height: 140,
       child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         scrollDirection: Axis.horizontal,
         itemCount: decks.length,
         separatorBuilder: (_, __) => const SizedBox(width: 16),
@@ -714,8 +897,8 @@ class _DeckCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 280,
-        padding: const EdgeInsets.fromLTRB(20, 25, 20, 20),
+        width: 260,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -744,11 +927,11 @@ class _DeckCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               subtitle,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.black, fontSize: 14,),
+              style: const TextStyle(color: Colors.black87, fontSize: 13,),
             ),
-            const Spacer(),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

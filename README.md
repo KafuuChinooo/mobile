@@ -1,6 +1,6 @@
 <img src="https://github.com/user-attachments/assets/49e2a8b3-79db-4609-a178-cc5ab8d6b977" alt="Logo" width="200"/>
 
-# FlashCard
+# Memzy
 
 
 ## Setup

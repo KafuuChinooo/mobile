@@ -1,16 +1,16 @@
 package_rename_config:
   android:
-    app_name: FlashCard
+    app_name: Memzy
     package_name: com.example.flashcard
     override_old_package: com.example.flashcard.flash_card
 
   web:
-    app_name: FlashCard
-    short_app_name: FlashCard
+    app_name: Memzy
+    short_app_name: Memzy
     description: A simple flashcard web app built using Flutter to learn basic state management and improve UX design
 
   windows:
-    app_name: FlashCard
+    app_name: Memzy
     organization: architxkumar.dev
     copyright_notice: © 2025 Archit Kumar
-    exe_name: flashcard
+    exe_name: memzy
