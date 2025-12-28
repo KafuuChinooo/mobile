@@ -34,36 +34,26 @@ class FirestoreDeckRepository implements DeckRepository {
     final user = _auth.currentUser;
     if (user == null) return [];
 
-    try {
-      final querySnapshot = await _getDecksCollection()
-          .where('authorId', isEqualTo: user.uid)
-          .orderBy('created_at', descending: true)
-          .get();
+    final querySnapshot = await _getDecksCollection()
+        .where('authorId', isEqualTo: user.uid)
+        .orderBy('created_at', descending: true)
+        .get();
 
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return Deck.fromJson(data);
-      }).toList();
-    } catch (e) {
-      print('Error fetching decks: $e');
-      return [];
-    }
+    return querySnapshot.docs.map((doc) {
+      final data = doc.data();
+      data['id'] = doc.id;
+      return Deck.fromJson(data);
+    }).toList();
   }
 
   @override
   Future<List<DeckCard>> fetchCards(String deckId) async {
-    try {
-      final snapshot = await _getDecksCollection().doc(deckId).collection('cards').get();
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = data['id'] ?? doc.id;
-        return DeckCard.fromJson(data);
-      }).toList();
-    } catch (e) {
-      print('Error fetching cards: $e');
-      return [];
-    }
+    final snapshot = await _getDecksCollection().doc(deckId).collection('cards').get();
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      data['id'] = data['id'] ?? doc.id;
+      return DeckCard.fromJson(data);
+    }).toList();
   }
 
   @override
@@ -113,13 +103,16 @@ class FirestoreDeckRepository implements DeckRepository {
       batch.update(deckRef, deck.toJson(preserveCreatedAt: true));
 
       final existingCards = await cardsCollection.get();
-      for (final doc in existingCards.docs) {
-        batch.delete(doc.reference);
-      }
+      final remainingIds = existingCards.docs.map((d) => d.id).toSet();
 
       for (final card in deck.cards) {
         final cardRef = cardsCollection.doc(card.id);
-        batch.set(cardRef, card.toJson());
+        batch.set(cardRef, card.toJson(), SetOptions(merge: true));
+        remainingIds.remove(card.id);
+      }
+
+      for (final obsoleteId in remainingIds) {
+        batch.delete(cardsCollection.doc(obsoleteId));
       }
 
       await batch.commit();

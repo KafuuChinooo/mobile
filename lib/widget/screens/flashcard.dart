@@ -50,6 +50,7 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
   final FlipCardController _controller = FlipCardController();
   List<DeckCard> _cards = [];
   bool _isLoading = true;
+  String? _error;
   int _currentQuestionIndex = 0;
   bool _showAnswer = false;
 
@@ -73,8 +74,10 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
-      print("Error loading cards: $e");
+      setState(() {
+        _isLoading = false;
+        _error = 'Unable to load cards: $e';
+      });
     }
   }
 
@@ -164,6 +167,9 @@ class _QuizScreenBodyState extends State<QuizScreenBody> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(child: Text(_error!));
     }
     if (_cards.isEmpty) {
       return const Center(

@@ -1,5 +1,6 @@
 import 'package:flash_card/data/deck_repository.dart';
 import 'package:flash_card/model/deck.dart';
+import 'package:flash_card/helper/text_normalizer.dart';
 import 'package:flash_card/widget/app_bottom_nav.dart';
 import 'package:flash_card/widget/app_scaffold.dart';
 import 'package:flash_card/widget/screens/add_deck_screen.dart';
@@ -47,6 +48,7 @@ class _DecksScreenState extends State<DecksScreen> {
 
   List<Deck> _decks = [];
   bool _loading = true;
+  String? _loadError;
   _DeckListTab _activeTab = _DeckListTab.created;
   final QuizEngine _engine = const QuizEngine();
 
@@ -78,13 +80,25 @@ class _DecksScreenState extends State<DecksScreen> {
   }
 
   Future<void> _loadDecks() async {
-    setState(() => _loading = true);
-    final decks = await _repository.fetchDecks();
-    if (mounted) {
-      setState(() {
-        _decks = decks;
-        _loading = false;
-      });
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final decks = await _repository.fetchDecks();
+      if (mounted) {
+        setState(() {
+          _decks = decks;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = 'Unable to load decks: $e';
+        });
+      }
     }
   }
 
@@ -289,13 +303,13 @@ class _DecksScreenState extends State<DecksScreen> {
   List<Deck> get _filteredDecks {
     const completionThreshold = 0.999; // tolerate floating errors
     final query = _searchController.text.trim();
-    final normalizedQuery = _normalize(query);
+    final normalizedQuery = normalizeText(query);
 
     bool matchesQuery(Deck deck) {
       if (normalizedQuery.isEmpty) return true;
-      final normalizedTitle = _normalize(deck.title);
-      final normalizedDescription = _normalize(deck.description);
-      final normalizedTags = _normalize(deck.tags.join(' '));
+      final normalizedTitle = normalizeText(deck.title);
+      final normalizedDescription = normalizeText(deck.description);
+      final normalizedTags = normalizeText(deck.tags.join(' '));
       return normalizedTitle.contains(normalizedQuery) ||
           normalizedDescription.contains(normalizedQuery) ||
           normalizedTags.contains(normalizedQuery);
@@ -313,93 +327,6 @@ class _DecksScreenState extends State<DecksScreen> {
 
     return _decks.where((deck) => matchesQuery(deck) && matchesTab(deck)).toList();
   }
-
-  String _normalize(String input) {
-    const accentMap = <String, String>{
-      // a
-      "\u00e1": "a",
-      "\u00e0": "a",
-      "\u1ea3": "a",
-      "\u00e3": "a",
-      "\u1ea1": "a",
-      "\u0103": "a",
-      "\u1eaf": "a",
-      "\u1eb1": "a",
-      "\u1eb3": "a",
-      "\u1eb5": "a",
-      "\u1eb7": "a",
-      "\u00e2": "a",
-      "\u1ea5": "a",
-      "\u1ea7": "a",
-      "\u1ea9": "a",
-      "\u1eab": "a",
-      "\u1ead": "a",
-      // d
-      "\u0111": "d",
-      // e
-      "\u00e9": "e",
-      "\u00e8": "e",
-      "\u1ebb": "e",
-      "\u1ebd": "e",
-      "\u1eb9": "e",
-      "\u00ea": "e",
-      "\u1ebf": "e",
-      "\u1ec1": "e",
-      "\u1ec3": "e",
-      "\u1ec5": "e",
-      "\u1ec7": "e",
-      // i
-      "\u00ed": "i",
-      "\u00ec": "i",
-      "\u1ec9": "i",
-      "\u0129": "i",
-      "\u1ecb": "i",
-      // o
-      "\u00f3": "o",
-      "\u00f2": "o",
-      "\u1ecf": "o",
-      "\u00f5": "o",
-      "\u1ecd": "o",
-      "\u00f4": "o",
-      "\u1ed1": "o",
-      "\u1ed3": "o",
-      "\u1ed5": "o",
-      "\u1ed7": "o",
-      "\u1ed9": "o",
-      "\u01a1": "o",
-      "\u1edb": "o",
-      "\u1edd": "o",
-      "\u1edf": "o",
-      "\u1ee1": "o",
-      "\u1ee3": "o",
-      // u
-      "\u00fa": "u",
-      "\u00f9": "u",
-      "\u1ee7": "u",
-      "\u0169": "u",
-      "\u1ee5": "u",
-      "\u01b0": "u",
-      "\u1ee9": "u",
-      "\u1eeb": "u",
-      "\u1eed": "u",
-      "\u1eef": "u",
-      "\u1ef1": "u",
-      // y
-      "\u00fd": "y",
-      "\u1ef3": "y",
-      "\u1ef7": "y",
-      "\u1ef9": "y",
-      "\u1ef5": "y",
-    };
-
-    final buffer = StringBuffer();
-    for (final rune in input.runes) {
-      final char = String.fromCharCode(rune).toLowerCase();
-      buffer.write(accentMap[char] ?? char);
-    }
-    return buffer.toString();
-  }
-
 
   double _progressForDeck(Deck deck) {
     if (deck.cardCount == 0) return 0;
@@ -469,6 +396,9 @@ class _DecksScreenState extends State<DecksScreen> {
   }
 
   Widget _buildLatestReviewSection() {
+    if (_loadError != null) {
+      return _ErrorCard(message: _loadError!, onRetry: _loadDecks);
+    }
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -538,7 +468,6 @@ class _DecksScreenState extends State<DecksScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              const SizedBox(height: 16),
               _ProgressBar(value: progress, accent: _accent, percentLabel: '${(progress * 100).round()}%'),
               const SizedBox(height: 14),
               Row(
@@ -609,35 +538,39 @@ class _DecksScreenState extends State<DecksScreen> {
         if (_loading)
           const Center(child: CircularProgressIndicator())
         else if (_filteredDecks.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _activeTab == _DeckListTab.uncomplete
-                      ? 'Great job! No unfinished decks right now.'
-                      : 'No decks yet. Tap + to add one.',
-                  style: const TextStyle(color: Colors.black87),
-                ),
-                const SizedBox(height: 8),
-                if (_activeTab == _DeckListTab.created)
-                  TextButton(
-                    onPressed: _openAddDeck,
-                    child: const Text('Create deck'),
+          _ErrorOrEmpty(
+            error: _loadError,
+            onRetry: _loadDecks,
+            emptyBuilder: () => Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 6),
                   ),
-              ],
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _activeTab == _DeckListTab.uncomplete
+                        ? 'Great job! No unfinished decks right now.'
+                        : 'No decks yet. Tap + to add one.',
+                    style: const TextStyle(color: Colors.black87),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_activeTab == _DeckListTab.created)
+                    TextButton(
+                      onPressed: _openAddDeck,
+                      child: const Text('Create deck'),
+                    ),
+                ],
+              ),
             ),
           )
         else
@@ -695,7 +628,6 @@ class _DecksScreenState extends State<DecksScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
                       const SizedBox(height: 14),
                       _ProgressBar(
                         value: progress,
@@ -775,6 +707,61 @@ class _SectionCard extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+class _ErrorOrEmpty extends StatelessWidget {
+  final String? error;
+  final Future<void> Function() onRetry;
+  final Widget Function() emptyBuilder;
+
+  const _ErrorOrEmpty({
+    required this.error,
+    required this.onRetry,
+    required this.emptyBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (error != null) {
+      return _ErrorCard(message: error!, onRetry: onRetry);
+    }
+    return emptyBuilder();
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
+
+  const _ErrorCard({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF2E6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFC29D)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.deepOrange),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.black87),
+            ),
+          ),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 }

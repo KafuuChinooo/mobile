@@ -1,6 +1,5 @@
 import 'package:flash_card/widget/app_bottom_nav.dart';
 import 'package:flash_card/widget/auth/auth_screens.dart';
-import 'package:flash_card/widget/screens/add_deck_screen.dart';
 import 'package:flash_card/widget/screens/navigation_shell.dart';
 import 'package:flash_card/widget/screens/welcome_screen.dart';
 import 'package:flutter/material.dart';
@@ -8,17 +7,13 @@ import 'package:flutter/material.dart';
 class AppRouter {
   static const String home = '/';
   static const String account = '/account';
-  static const String flashcard = '/flashcard';
   static const String decks = '/decks';
-  static const String addDeck = '/addDeck';
   static const String login = '/login';
   static const String signUp = '/signUp';
   static const String welcome = '/welcome';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case addDeck:
-        return MaterialPageRoute(builder: (_) => const AddDeckScreen());
       case login:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
       case signUp:
@@ -37,11 +32,7 @@ class AppRouter {
     }
 
     return MaterialPageRoute(
-      builder: (_) => Scaffold(
-        body: Center(
-          child: Text('No route defined for ${settings.name}'),
-        ),
-      ),
+      builder: (_) => NotFoundScreen(route: settings.name),
     );
   }
 
@@ -56,5 +47,32 @@ class AppRouter {
       default:
         return null;
     }
+  }
+}
+
+class NotFoundScreen extends StatelessWidget {
+  final String? route;
+
+  const NotFoundScreen({super.key, this.route});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+            const SizedBox(height: 12),
+            Text('No route defined for ${route ?? 'unknown'}'),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pushReplacementNamed(AppRouter.home),
+              child: const Text('Go home'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
