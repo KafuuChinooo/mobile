@@ -28,6 +28,7 @@ You are generating a single concise hint for a quiz flashcard. Read the term and
 Term: "$term"
 Correct answer: "$answer"
 Strict rules:
+- Treat "term" as the full prompt/question as given; do not change or answer it.
 - Language: match the language of the term/answer.
 - Safety: never reveal the exact answer text or spell it out.
 - Brevity: exactly one short sentence.
@@ -108,6 +109,7 @@ Return exactly one object with the field "hint".''';
     final prompt = '''
 You are generating concise hints for multiple quiz flashcards. Read each item, then return only JSON that matches the structure in the example below.
 Strict rules:
+- Treat each "term" as the full prompt/question as given; do not rewrite or answer it.
 - Language: match the language of each term/answer.
 - Safety: never reveal the exact answer text or spell it out.
 - Brevity: each hint is one short sentence.

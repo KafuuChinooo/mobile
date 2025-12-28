@@ -218,11 +218,12 @@ You are an expert exam item writer. Generate exactly 3 high-quality distractors 
 Context to read carefully:
 - Deck metadata: ${jsonEncode(deckMeta)}
 - Full deck cards (use to avoid duplicates/near-misses): ${jsonEncode(deckCards)}
-Rules:
+Rules (follow all):
+- Treat "term" as the full prompt/question as given (may be long, multi-line, or complex); do NOT answer it, only create wrong answers.
 - Output VALID JSON only, one object, double quotes everywhere, no markdown/fences/prose.
 - Schema: {"results":[{"id":"<id>","distractors":["d1","d2","d3"]},...]}
 - Each "distractors" array: exactly 3 unique, concise, plausible wrong answers that fit the deck context and language. Never reveal or paraphrase the correct answer.
-- Keep style consistent with the deck language; avoid gibberish and overly long text.
+- Keep style consistent with the deck language; avoid gibberish, meta-comments, or explanations.
 Format example (structure only):
 {"results":[{"id":"card1","distractors":["Wrong A","Wrong B","Wrong C"]}]}
 Items needing distractors: ${jsonEncode(items)}
@@ -233,7 +234,10 @@ Items needing distractors: ${jsonEncode(items)}
     return '''
 STRICT MODE: Return exactly one JSON object, nothing else. Use ONLY double quotes. Follow this schema exactly:
 {"results":[{"id":"<id>","distractors":["d1","d2","d3"]},...]}
-If you output anything else, the request fails. No markdown, no fences, no single quotes, no comments.
+Rules to repeat to yourself:
+- "term" may be complex/multi-line; keep it intact and DO NOT answer it.
+- No markdown, no fences, no single quotes, no comments, no leading/trailing text.
+If you output anything else, the request fails.
 Items needing distractors: ${jsonEncode(items)}
 ''';
   }

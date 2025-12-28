@@ -16,20 +16,31 @@ class QuizEngine {
     shuffledCards.shuffle(_random);
 
     return shuffledCards.map((card) {
-      final wrongAnswers = _buildWrongAnswers(card, shuffledCards);
-      final options = [card.definition, ...wrongAnswers]..shuffle(_random);
+      // Front side (term) becomes the question prompt; back side (definition) becomes the answer.
+      final prompt = card.term;
+      final answer = card.definition.isNotEmpty ? card.definition : card.term;
+      final wrongAnswers = _buildWrongAnswers(
+        card: card,
+        allCards: shuffledCards,
+        correctAnswer: answer,
+      );
+      final options = [answer, ...wrongAnswers]..shuffle(_random);
 
       return QuizQuestion(
         cardId: card.id,
-        term: card.term,
-        correctAnswer: card.definition,
+        term: prompt,
+        correctAnswer: answer,
         options: options,
       );
     }).toList();
   }
 
-  List<String> _buildWrongAnswers(DeckCard card, List<DeckCard> allCards) {
-    final normalizedCorrect = card.definition.trim().toLowerCase();
+  List<String> _buildWrongAnswers({
+    required DeckCard card,
+    required List<DeckCard> allCards,
+    required String correctAnswer,
+  }) {
+    final normalizedCorrect = correctAnswer.trim().toLowerCase();
     final wrongAnswers = <String>[];
     final seen = <String>{};
 
@@ -42,15 +53,20 @@ class QuizEngine {
       wrongAnswers.add(trimmed);
     }
 
+    // Prefer pre-generated distractors (should match back-side style).
     for (final distractor in card.distractors ?? <String>[]) {
       addIfValid(distractor);
       if (wrongAnswers.length == requiredDistractorsPerCard) return wrongAnswers;
     }
 
-    final otherDefinitions = allCards.where((c) => c.id != card.id).map((c) => c.definition).toList()
+    // Otherwise, pull other cards' back side (definition) to keep format similar.
+    final otherDefinitions = allCards
+        .where((c) => c.id != card.id)
+        .map((c) => c.definition.isNotEmpty ? c.definition : c.term)
+        .toList()
       ..shuffle(_random);
-    for (final definition in otherDefinitions) {
-      addIfValid(definition);
+    for (final candidate in otherDefinitions) {
+      addIfValid(candidate);
       if (wrongAnswers.length == requiredDistractorsPerCard) return wrongAnswers;
     }
 
