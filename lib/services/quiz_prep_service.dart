@@ -54,7 +54,14 @@ class QuizPrepService {
     for (var i = 0; i < needing.length; i += _batchSize) {
       final chunk = needing.sublist(i, min(i + _batchSize, needing.length));
       try {
-        final generated = await _distractorProvider.generateBatch(chunk);
+        final generated = await _distractorProvider.generateBatch(
+          chunk,
+          deckContext: cards,
+          deckTitle: deck.title,
+          deckDescription: deck.description,
+          deckTags: deck.tags,
+          deckCategory: deck.category,
+        );
         for (final card in chunk) {
           final distractors = generated[card.id];
           if (distractors != null && distractors.length >= requiredDistractorsPerCard) {

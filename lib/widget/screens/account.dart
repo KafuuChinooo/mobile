@@ -266,117 +266,40 @@ class _AccountScreenState extends State<AccountScreen> {
       return;
     }
 
-    final currentController = TextEditingController();
-    final newController = TextEditingController();
-    final confirmController = TextEditingController();
-    bool saving = false;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
 
-    await showDialog<void>(
+    final result = await showDialog<_PasswordChangeInput?>(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Change password'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: currentController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Current password',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: newController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'New password',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: confirmController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Confirm new password',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: saving ? null : () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: saving
-                      ? null
-                      : () async {
-                          final currentPw = currentController.text.trim();
-                          final newPw = newController.text.trim();
-                          final confirmPw = confirmController.text.trim();
-                          if (currentPw.isEmpty || newPw.isEmpty || confirmPw.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please fill all fields.')),
-                            );
-                            return;
-                          }
-                          if (newPw != confirmPw) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('New passwords do not match.')),
-                            );
-                            return;
-                          }
-
-                          setState(() => saving = true);
-                          try {
-                            final cred = EmailAuthProvider.credential(email: email, password: currentPw);
-                            await currentUser!.reauthenticateWithCredential(cred);
-                            await currentUser.updatePassword(newPw);
-                            await currentUser.reload();
-                            if (mounted) {
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Password changed successfully.')),
-                              );
-                            }
-                          } on FirebaseAuthException catch (e) {
-                            setState(() => saving = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.message ?? 'Password change failed.')),
-                            );
-                          } catch (e) {
-                            setState(() => saving = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Password change failed: $e')),
-                            );
-                          }
-                        },
-                  child: saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
-                        )
-                      : const Text('Update'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (_) => const _ChangePasswordDialog(),
     );
 
-    currentController.dispose();
-    newController.dispose();
-    confirmController.dispose();
+    if (!mounted) return;
+    if (result == null) return;
+    if (result.error != null) {
+      messenger.showSnackBar(SnackBar(content: Text(result.error!)));
+      return;
+    }
+
+    try {
+      final cred = EmailAuthProvider.credential(email: email, password: result.current);
+      await currentUser!.reauthenticateWithCredential(cred);
+      await currentUser.updatePassword(result.next);
+      await currentUser.reload();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Password changed successfully.')),
+      );
+    } on FirebaseAuthException catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(e.message ?? 'Password change failed.')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Password change failed: $e')),
+      );
+    }
   }
 
   Future<void> _showAvatarSelector() async {
@@ -529,6 +452,109 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 }
 
+class _PasswordChangeInput {
+  final String current;
+  final String next;
+  final String? error;
+
+  const _PasswordChangeInput({required this.current, required this.next, this.error});
+
+  const _PasswordChangeInput.error(this.error)
+      : current = '',
+        next = '';
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  late final TextEditingController _currentController;
+  late final TextEditingController _newController;
+  late final TextEditingController _confirmController;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentController = TextEditingController();
+    _newController = TextEditingController();
+    _confirmController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _currentController.dispose();
+    _newController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Change password'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _currentController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Current password',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _newController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'New password',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _confirmController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Confirm new password',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final currentPw = _currentController.text.trim();
+            final newPw = _newController.text.trim();
+            final confirmPw = _confirmController.text.trim();
+            if (currentPw.isEmpty || newPw.isEmpty || confirmPw.isEmpty) {
+              Navigator.of(context).pop(const _PasswordChangeInput.error('Please fill all fields.'));
+              return;
+            }
+            if (newPw != confirmPw) {
+              Navigator.of(context).pop(const _PasswordChangeInput.error('New passwords do not match.'));
+              return;
+            }
+            Navigator.of(context).pop(
+              _PasswordChangeInput(current: currentPw, next: newPw),
+            );
+          },
+          child: const Text('Update'),
+        ),
+      ],
+    );
+  }
+}
 const List<String> _presetAvatars = [
   'images/avatar/1.jpg',
   'images/avatar/2.jpg',

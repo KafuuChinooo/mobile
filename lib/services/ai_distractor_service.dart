@@ -15,10 +15,21 @@ class AiDistractorService implements DistractorProvider {
   Future<List<String>> generate({
     required String term,
     required String answer,
+    List<DeckCard>? deckContext,
+    String? deckTitle,
+    String? deckDescription,
+    List<String>? deckTags,
+    String? deckCategory,
   }) async {
-    final batch = await generateBatch([
-      DeckCard(term: term, definition: answer, id: 'single'),
-    ]);
+    final singleCard = DeckCard(term: term, definition: answer, id: 'single');
+    final batch = await generateBatch(
+      [singleCard],
+      deckContext: deckContext ?? [singleCard],
+      deckTitle: deckTitle,
+      deckDescription: deckDescription,
+      deckTags: deckTags,
+      deckCategory: deckCategory,
+    );
     final list = batch['single'];
     if (list == null || list.length < 3) {
       throw Exception('Not enough valid distractors for single request: $list');
@@ -27,7 +38,14 @@ class AiDistractorService implements DistractorProvider {
   }
 
   @override
-  Future<Map<String, List<String>>> generateBatch(List<DeckCard> cards) async {
+  Future<Map<String, List<String>>> generateBatch(
+    List<DeckCard> cards, {
+    List<DeckCard>? deckContext,
+    String? deckTitle,
+    String? deckDescription,
+    List<String>? deckTags,
+    String? deckCategory,
+  }) async {
     if (cards.isEmpty) return {};
     final items = cards
         .map((c) => {
@@ -38,13 +56,31 @@ class AiDistractorService implements DistractorProvider {
         .toList();
 
     try {
-      return await _requestAndParse(items: items, cards: cards, strict: false);
+      return await _requestAndParse(
+        items: items,
+        cards: cards,
+        fullDeck: deckContext ?? cards,
+        deckTitle: deckTitle,
+        deckDescription: deckDescription,
+        deckTags: deckTags,
+        deckCategory: deckCategory,
+        strict: false,
+      );
     } on FormatException {
       // Retry once with a stricter prompt to avoid malformed JSON.
-      return await _requestAndParse(items: items, cards: cards, strict: true);
+      return await _requestAndParse(
+        items: items,
+        cards: cards,
+        fullDeck: deckContext ?? cards,
+        deckTitle: deckTitle,
+        deckDescription: deckDescription,
+        deckTags: deckTags,
+        deckCategory: deckCategory,
+        strict: true,
+      );
     } on Exception {
       // As a last resort, fall back to local generation to avoid breaking the game flow.
-      return _fallbackDistractors(cards);
+      return _fallbackDistractors(deckContext ?? cards);
     }
   }
 
@@ -61,13 +97,26 @@ class AiDistractorService implements DistractorProvider {
   Future<Map<String, List<String>>> _requestAndParse({
     required List<Map<String, String>> items,
     required List<DeckCard> cards,
+    required List<DeckCard> fullDeck,
+    String? deckTitle,
+    String? deckDescription,
+    List<String>? deckTags,
+    String? deckCategory,
     required bool strict,
   }) async {
     final uri = Uri.parse(
       'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$_apiKey',
     );
 
-    final prompt = _buildPrompt(items, strict: strict);
+    final prompt = _buildPrompt(
+      items,
+      fullDeck: fullDeck,
+      deckTitle: deckTitle,
+      deckDescription: deckDescription,
+      deckTags: deckTags,
+      deckCategory: deckCategory,
+      strict: strict,
+    );
 
     final response = await _client.post(
       uri,
@@ -136,19 +185,42 @@ class AiDistractorService implements DistractorProvider {
     return map;
   }
 
-  String _buildPrompt(List<Map<String, String>> items, {required bool strict}) {
+  String _buildPrompt(
+    List<Map<String, String>> items, {
+    required List<DeckCard> fullDeck,
+    String? deckTitle,
+    String? deckDescription,
+    List<String>? deckTags,
+    String? deckCategory,
+    required bool strict,
+  }) {
+    final deckMeta = {
+      'title': deckTitle,
+      'description': deckDescription,
+      'tags': deckTags,
+      'category': deckCategory,
+    };
+    final deckCards = fullDeck
+        .map((c) => {
+              'id': c.id,
+              'term': c.term,
+              'answer': c.definition,
+            })
+        .toList();
+
     final base = '''
-You generate exactly 3 distractors (wrong answers) for each flashcard item. Respond with VALID JSON only, one object, using DOUBLE QUOTES everywhere, no markdown, no prose, no single quotes.
-Schema (must match exactly):
-{"results":[{"id":"<id>","distractors":["d1","d2","d3"]},...]}
-Hard rules:
-- Output only one JSON object; do NOT wrap in ```; do NOT prefix with "json".
-- Each "distractors" array has exactly 3 unique, concise strings.
-- Language matches the item; never reveal or paraphrase the correct answer.
-- Use valid JSON (RFC 8259): double quotes only, no trailing commas, no extra text.
+You are an expert exam item writer. Generate exactly 3 high-quality distractors (wrong answers) per flashcard.
+Context to read carefully:
+- Deck metadata: ${jsonEncode(deckMeta)}
+- Full deck cards (use to avoid duplicates/near-misses): ${jsonEncode(deckCards)}
+Rules:
+- Output VALID JSON only, one object, double quotes everywhere, no markdown/fences/prose.
+- Schema: {"results":[{"id":"<id>","distractors":["d1","d2","d3"]},...]}
+- Each "distractors" array: exactly 3 unique, concise, plausible wrong answers that fit the deck context and language. Never reveal or paraphrase the correct answer.
+- Keep style consistent with the deck language; avoid gibberish and overly long text.
 Format example (structure only):
 {"results":[{"id":"card1","distractors":["Wrong A","Wrong B","Wrong C"]}]}
-Items: ${jsonEncode(items)}
+Items needing distractors: ${jsonEncode(items)}
 ''';
 
     if (!strict) return base;
@@ -157,7 +229,7 @@ Items: ${jsonEncode(items)}
 STRICT MODE: Return exactly one JSON object, nothing else. Use ONLY double quotes. Follow this schema exactly:
 {"results":[{"id":"<id>","distractors":["d1","d2","d3"]},...]}
 If you output anything else, the request fails. No markdown, no fences, no single quotes, no comments.
-Items: ${jsonEncode(items)}
+Items needing distractors: ${jsonEncode(items)}
 ''';
   }
 
