@@ -479,7 +479,7 @@ class _DecksScreenState extends State<DecksScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
             Text(
-              'My lastest review',
+              'My latest review',
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             ),
             SizedBox(height: 10),
@@ -498,7 +498,7 @@ class _DecksScreenState extends State<DecksScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'My lastest review',
+          'My latest review',
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
         ),
         const SizedBox(height: 10),
@@ -530,7 +530,7 @@ class _DecksScreenState extends State<DecksScreen> {
                   PopupMenuButton<_DeckAction>(
                     onSelected: (action) => _handleMenuSelection(context, action, deck),
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: _DeckAction.edit, child: Text('Chinh sua')),
+                      PopupMenuItem(value: _DeckAction.edit, child: Text('Edit')),
                       PopupMenuItem(value: _DeckAction.delete, child: Text('Delete')),
                     ],
                     child: const Icon(Icons.more_vert, color: Colors.black54),
@@ -538,14 +538,6 @@ class _DecksScreenState extends State<DecksScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _Pill(label: '10 test', accent: _accent),
-                  _Pill(label: '20 review', accent: _accent),
-                ],
-              ),
               const SizedBox(height: 16),
               _ProgressBar(value: progress, accent: _accent, percentLabel: '${(progress * 100).round()}%'),
               const SizedBox(height: 14),
@@ -704,14 +696,6 @@ class _DecksScreenState extends State<DecksScreen> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _Pill(label: '0 test', accent: _accent),
-                          _Pill(label: '0 review', accent: _accent),
-                        ],
-                      ),
                       const SizedBox(height: 14),
                       _ProgressBar(
                         value: progress,
@@ -791,32 +775,6 @@ class _SectionCard extends StatelessWidget {
         ],
       ),
       child: child,
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  final String label;
-  final Color accent;
-
-  const _Pill({required this.label, required this.accent});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: accent.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: accent,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
-      ),
     );
   }
 }

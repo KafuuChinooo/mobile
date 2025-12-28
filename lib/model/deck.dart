@@ -126,12 +126,12 @@ class Deck {
     );
   }
 
-  Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toJson({bool preserveCreatedAt = false}) => {
         'title': title,
         'description': description,
         'authorId': authorId,
         'cardCount': cardCount,
-        'created_at': FieldValue.serverTimestamp(),
+        'created_at': preserveCreatedAt ? Timestamp.fromDate(createdAt) : FieldValue.serverTimestamp(),
         'last_opened_at': lastOpenedAt == null ? null : Timestamp.fromDate(lastOpenedAt!),
         'isPublic': isPublic,
         'tags': tags,

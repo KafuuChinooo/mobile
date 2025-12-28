@@ -114,15 +114,22 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
 
     setState(() => _saving = true);
 
-    final deckToSave = Deck(
-      id: _isEditing ? widget.deckToEdit!.id : '',
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim(),
-      authorId: _isEditing ? widget.deckToEdit!.authorId : '',
-      cardCount: cardData.length,
-      cards: cardData,
-      createdAt: _isEditing ? widget.deckToEdit!.createdAt : DateTime.now(),
-    );
+    final deckToSave = _isEditing
+        ? widget.deckToEdit!.copyWith(
+            title: _titleController.text.trim(),
+            description: _descriptionController.text.trim(),
+            cardCount: cardData.length,
+            cards: cardData,
+          )
+        : Deck(
+            id: '',
+            title: _titleController.text.trim(),
+            description: _descriptionController.text.trim(),
+            authorId: '',
+            cardCount: cardData.length,
+            cards: cardData,
+            createdAt: DateTime.now(),
+          );
 
     try {
       if (_isEditing) {

@@ -105,7 +105,24 @@ class FirestoreDeckRepository implements DeckRepository {
   @override
   Future<void> updateDeck(Deck deck) async {
     try {
-       await _getDecksCollection().doc(deck.id).update(deck.toJson());
+      final deckRef = _getDecksCollection().doc(deck.id);
+      final cardsCollection = deckRef.collection('cards');
+
+      final batch = _firestore.batch();
+
+      batch.update(deckRef, deck.toJson(preserveCreatedAt: true));
+
+      final existingCards = await cardsCollection.get();
+      for (final doc in existingCards.docs) {
+        batch.delete(doc.reference);
+      }
+
+      for (final card in deck.cards) {
+        final cardRef = cardsCollection.doc(card.id);
+        batch.set(cardRef, card.toJson());
+      }
+
+      await batch.commit();
     } catch (e) {
       print("Error updating deck: $e");
       rethrow;

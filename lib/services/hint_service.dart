@@ -33,7 +33,7 @@ Strict rules:
 - Brevity: exactly one short sentence.
 - Format: respond with JSON only, no markdown fences, no leading/trailing text.
 JSON example (structure to follow):
-{"hint":"Gợi ý ngắn gọn và gián tiếp ở đây"}
+{"hint":"Short, indirect hint goes here"}
 Return exactly one object with the field "hint".''';
 
     final response = await _client.post(
@@ -112,7 +112,7 @@ Strict rules:
 - Brevity: each hint is one short sentence.
 - Format: respond with JSON only, no markdown fences, no leading/trailing text.
 JSON example (structure to follow):
-{"results":[{"id":"card1","hint":"Gợi ý ngắn gọn và gián tiếp cho card1"},{"id":"card2","hint":"Gợi ý ngắn gọn và gián tiếp cho card2"}]}
+{"results":[{"id":"card1","hint":"Short, indirect hint for card1"},{"id":"card2","hint":"Short, indirect hint for card2"}]}
 Items: ${jsonEncode(items)}
 ''';
 
