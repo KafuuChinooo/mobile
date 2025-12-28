@@ -49,10 +49,12 @@ class QuizEngine {
       if (trimmed == null || trimmed.isEmpty) return;
       final lower = trimmed.toLowerCase();
       if (lower == normalizedCorrect) return;
+      if (!_looksLikeBackSide(trimmed, correctAnswer)) return;
       if (!seen.add(lower)) return;
       wrongAnswers.add(trimmed);
     }
 
+    // Prefer pre-generated distractors (should match back-side style).
     // Prefer pre-generated distractors (should match back-side style).
     for (final distractor in card.distractors ?? <String>[]) {
       addIfValid(distractor);
@@ -77,6 +79,20 @@ class QuizEngine {
     }
 
     return wrongAnswers;
+  }
+
+  bool _looksLikeBackSide(String candidate, String correctAnswer) {
+    final cand = candidate.trim();
+    final ans = correctAnswer.trim();
+    if (cand.isEmpty || ans.isEmpty) return false;
+
+    final ansHasSpace = ans.contains(' ');
+    if (ansHasSpace && !cand.contains(' ')) return false;
+
+    final minLen = ans.length >= 20 ? (ans.length * 0.4).round() : 6;
+    if (cand.length < minLen) return false;
+
+    return true;
   }
 }
 

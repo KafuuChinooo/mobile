@@ -220,6 +220,7 @@ Context to read carefully:
 - Full deck cards (use to avoid duplicates/near-misses): ${jsonEncode(deckCards)}
 Rules (follow all):
 - Treat "term" as the full prompt/question as given (may be long, multi-line, or complex); do NOT answer it, only create wrong answers.
+- Match the style/length of the provided "answer" (back side/definition), not the term. If the answer is a sentence, your distractors should be sentence-like and similar in length/tone.
 - Output VALID JSON only, one object, double quotes everywhere, no markdown/fences/prose.
 - Schema: {"results":[{"id":"<id>","distractors":["d1","d2","d3"]},...]}
 - Each "distractors" array: exactly 3 unique, concise, plausible wrong answers that fit the deck context and language. Never reveal or paraphrase the correct answer.
@@ -236,6 +237,7 @@ STRICT MODE: Return exactly one JSON object, nothing else. Use ONLY double quote
 {"results":[{"id":"<id>","distractors":["d1","d2","d3"]},...]}
 Rules to repeat to yourself:
 - "term" may be complex/multi-line; keep it intact and DO NOT answer it.
+- Style: mirror the provided "answer" style/length (definition/back side), not the term.
 - No markdown, no fences, no single quotes, no comments, no leading/trailing text.
 If you output anything else, the request fails.
 Items needing distractors: ${jsonEncode(items)}
