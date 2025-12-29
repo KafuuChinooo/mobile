@@ -28,7 +28,4 @@
 - `images/` assets giao diện
 - `firebase_options.dart` cấu hình Firebase do FlutterFire sinh
 
-## Giấy phép
-[MIT LICENSE](./LICENSE)
-
 
