@@ -13,6 +13,7 @@ class AiHintService {
   final String _model;
   final http.Client _client;
 
+  // Sinh gợi ý ngắn cho một thẻ quiz
   Future<String> generateHint({
     required String term,
     required String answer,
@@ -64,6 +65,7 @@ Return exactly one object with the field "hint".''';
     return _parseHint(rawText);
   }
 
+  // Parse text AI thành hint sạch
   String _parseHint(String rawText) {
     final fenced = RegExp(r'```(?:json)?\\s*([\\s\\S]*?)```', multiLine: true);
     final fenceMatch = fenced.firstMatch(rawText);
@@ -89,11 +91,13 @@ Return exactly one object with the field "hint".''';
     return firstLine.isNotEmpty ? firstLine : 'No hint available.';
   }
 
+  // Đóng client HTTP khi xong
   void dispose() {
     _client.close();
   }
 
   /// Batch hint generation to reduce API calls. Returns map of cardId -> hint.
+  // Sinh batch gợi ý cho nhiều câu hỏi
   Future<Map<String, String>> generateHintsBatch(List<QuizQuestion> questions) async {
     if (questions.isEmpty) return {};
     final fallback = _fallbackHints(questions);
@@ -168,6 +172,7 @@ Items: ${jsonEncode(items)}
     return fallback;
   }
 
+  // Tách khối JSON từ phản hồi AI
   String _extractJson(String rawText) {
     final fenced = RegExp(r'```(?:json)?\\s*([\\s\\S]*?)```', multiLine: true);
     final fenceMatch = fenced.firstMatch(rawText);
@@ -181,12 +186,14 @@ Items: ${jsonEncode(items)}
     return text;
   }
 
+  // Kiểm tra API key đã được cấu hình
   void _assertKey() {
     if (_apiKey.isEmpty || _apiKey == 'PUT_YOUR_API_KEY_HERE') {
       throw StateError('Set your Gemini API key in AiHintService._apiKey before calling generateHint.');
     }
   }
 
+  // Sinh hint fallback đơn giản khi AI lỗi
   Map<String, String> _fallbackHints(List<QuizQuestion> questions) {
     final map = <String, String>{};
     for (final q in questions) {

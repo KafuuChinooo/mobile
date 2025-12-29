@@ -10,6 +10,7 @@ class QuizPrepException implements Exception {
   final String message;
 
   @override
+  // Hiển thị thông báo lỗi chuẩn bị quiz
   String toString() => message;
 }
 
@@ -29,6 +30,7 @@ class QuizPrepService {
 
   /// Loads cards (if missing), generates distractors where needed, and returns
   /// an updated list of cards. Emits progress 0..1 when provided.
+  // Chuẩn bị deck cho quiz, sinh distractor thiếu
   Future<List<DeckCard>> prepare(
     Deck deck, {
     void Function(double progress)? onProgress,

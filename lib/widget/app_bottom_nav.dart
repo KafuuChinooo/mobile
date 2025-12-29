@@ -13,6 +13,7 @@ class AppBottomNavigationBar extends StatelessWidget {
     this.onItemSelected,
   });
 
+  // Xử lý chọn tab, điều hướng hoặc callback
   void _handleTap(BuildContext context, BottomNavItem target) {
     if (target == currentItem) return;
 
@@ -25,6 +26,7 @@ class AppBottomNavigationBar extends StatelessWidget {
     Navigator.pushReplacementNamed(context, routeName);
   }
 
+  // Map tab sang route tương ứng
   String _routeForItem(BottomNavItem item) {
     switch (item) {
       case BottomNavItem.home:
@@ -36,10 +38,12 @@ class AppBottomNavigationBar extends StatelessWidget {
     }
   }
 
+  // Màu icon tùy tab đang chọn
   Color _iconColor(BottomNavItem item) {
     return item == currentItem ? const Color(0xFF7233FE) : Colors.grey;
   }
 
+  // Nhãn hiển thị cho từng tab
   String _label(BottomNavItem item) {
     switch (item) {
       case BottomNavItem.home:
@@ -52,6 +56,7 @@ class AppBottomNavigationBar extends StatelessWidget {
   }
 
   @override
+  // Dựng thanh điều hướng đáy tuỳ chọn tab
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
@@ -104,6 +109,7 @@ class _NavItem extends StatelessWidget {
   });
 
   @override
+  // Vẽ item biểu tượng và nhãn
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

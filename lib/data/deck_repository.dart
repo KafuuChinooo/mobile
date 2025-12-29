@@ -26,11 +26,13 @@ class FirestoreDeckRepository implements DeckRepository {
   );
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Trả về collection decks trên Firestore
   CollectionReference<Map<String, dynamic>> _getDecksCollection() {
     return _firestore.collection('decks');
   }
 
   @override
+  // Lấy danh sách bộ thẻ của user hiện tại
   Future<List<Deck>> fetchDecks() async {
     final user = _auth.currentUser;
     if (user == null) return [];
@@ -48,6 +50,7 @@ class FirestoreDeckRepository implements DeckRepository {
   }
 
   @override
+  // Lấy danh sách thẻ của bộ cụ thể
   Future<List<DeckCard>> fetchCards(String deckId) async {
     final snapshot = await _getDecksCollection().doc(deckId).collection('cards').get();
     return snapshot.docs.map((doc) {
@@ -58,6 +61,7 @@ class FirestoreDeckRepository implements DeckRepository {
   }
 
   @override
+  // Tạo deck mới kèm các thẻ ban đầu
   Future<void> addDeck(Deck deck) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('User not logged in');
@@ -94,6 +98,7 @@ class FirestoreDeckRepository implements DeckRepository {
   }
 
   @override
+  // Cập nhật deck và đồng bộ thẻ
   Future<void> updateDeck(Deck deck) async {
     try {
       final deckRef = _getDecksCollection().doc(deck.id);
@@ -124,6 +129,7 @@ class FirestoreDeckRepository implements DeckRepository {
   }
 
   @override
+  // Xóa deck theo id khỏi Firestore
   Future<void> deleteDeck(String deckId) async {
     try {
       await _getDecksCollection().doc(deckId).delete();
@@ -134,6 +140,7 @@ class FirestoreDeckRepository implements DeckRepository {
   }
 
   @override
+  // Lưu thời gian mở deck gần nhất
   Future<void> markDeckOpened(String deckId) async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -147,6 +154,7 @@ class FirestoreDeckRepository implements DeckRepository {
   }
 
   @override
+  // Cập nhật tiến độ học và vị trí thẻ
   Future<void> updateDeckProgress(String deckId, double progress, int lastStudiedIndex) async {
     try {
       await _getDecksCollection().doc(deckId).update({
@@ -160,6 +168,7 @@ class FirestoreDeckRepository implements DeckRepository {
   }
 
   @override
+  // Cập nhật đáp án nhiễu cho thẻ
   Future<void> updateCardDistractors(String deckId, String cardId, List<String> distractors) async {
     try {
       await _getDecksCollection()
@@ -173,6 +182,7 @@ class FirestoreDeckRepository implements DeckRepository {
   }
 
   @override
+  // Đánh dấu thẻ đã học hay chưa
   Future<void> updateCardLearned(String deckId, String cardId, bool learned) async {
     try {
       await _getDecksCollection()

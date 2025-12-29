@@ -7,10 +7,13 @@ class AuthService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Stream lắng nghe thay đổi đăng nhập
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  // User hiện tại từ Firebase
   User? get currentUser => _auth.currentUser;
 
+  // Đăng nhập bằng email mật khẩu
   Future<AuthResult> signIn({
     required String email,
     required String password,
@@ -27,6 +30,7 @@ class AuthService {
     }
   }
 
+  // Đăng ký tài khoản mới và profile
   Future<AuthResult> signUp({
     required String email,
     required String password,
@@ -56,6 +60,7 @@ class AuthService {
     }
   }
 
+  // Đăng nhập ẩn danh để dùng thử
   Future<AuthResult> signInAnon() async {
     try {
       print("Starting anonymous sign in...");
@@ -71,6 +76,7 @@ class AuthService {
     }
   }
 
+  // Gửi email đặt lại mật khẩu
   Future<AuthResult> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
@@ -82,8 +88,10 @@ class AuthService {
     }
   }
 
+  // Đăng xuất khỏi Firebase
   Future<void> signOut() => _auth.signOut();
 
+  // Chuyển mã lỗi FirebaseAuth sang thông điệp
   String _mapError(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':

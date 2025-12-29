@@ -30,6 +30,7 @@ class AppScaffold extends StatelessWidget {
     this.backgroundColor,
   });
 
+  // Xử lý back, fallback về home
   void _handleBack(BuildContext context) {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -38,6 +39,7 @@ class AppScaffold extends StatelessWidget {
     }
   }
 
+  // Dựng AppBar tùy chọn nút back
   PreferredSizeWidget? _buildAppBar(BuildContext context) {
     if (!showAppBar) return null;
     return AppBar(
@@ -63,6 +65,7 @@ class AppScaffold extends StatelessWidget {
   }
 
   @override
+  // Scaffold chuẩn chung cho các màn
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.surface,

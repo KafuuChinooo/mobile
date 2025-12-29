@@ -9,6 +9,7 @@ class QuizEngine {
 
   final Random? _random;
 
+  // Tạo danh sách câu hỏi từ deck cards
   List<QuizQuestion> buildQuestions(List<DeckCard> cards) {
     if (cards.isEmpty) return [];
 
@@ -35,6 +36,7 @@ class QuizEngine {
     }).toList();
   }
 
+  // Sinh đáp án sai phù hợp cho câu hỏi
   List<String> _buildWrongAnswers({
     required DeckCard card,
     required List<DeckCard> allCards,
@@ -81,6 +83,7 @@ class QuizEngine {
     return wrongAnswers;
   }
 
+  // Kiểm tra candidate có giống mặt sau không
   bool _looksLikeBackSide(String candidate, String correctAnswer) {
     final cand = candidate.trim();
     final ans = correctAnswer.trim();

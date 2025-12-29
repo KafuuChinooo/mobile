@@ -22,6 +22,7 @@ class DeckCard {
   String get front => term;
   String get back => definition;
 
+  // Sao chép thẻ, ghi đè trường thay đổi
   DeckCard copyWith({
     String? id,
     String? term,
@@ -40,6 +41,7 @@ class DeckCard {
     );
   }
 
+  // Chuyển DeckCard thành map lưu trữ
   Map<String, dynamic> toJson() => {
         'id': id,
         'term': term,
@@ -51,6 +53,7 @@ class DeckCard {
         'learned': learned,
       };
 
+  // Parse DeckCard từ dữ liệu Firestore
   factory DeckCard.fromJson(Map<String, dynamic> json) {
     List<String>? parsedDistractors;
     final rawDistractors = json['distractors'];
@@ -100,6 +103,7 @@ class Deck {
     this.cards = const [],
   });
 
+  // Sao chép deck, cập nhật trường cần đổi
   Deck copyWith({
     String? id,
     String? title,
@@ -132,6 +136,7 @@ class Deck {
     );
   }
 
+  // Serialize deck sang map cho Firestore
   Map<String, dynamic> toJson({bool preserveCreatedAt = false}) => {
         'title': title,
         'description': description,
@@ -146,6 +151,7 @@ class Deck {
         'last_studied_index': lastStudiedIndex,
       };
 
+  // Parse deck từ JSON/Firestore về model
   factory Deck.fromJson(Map<String, dynamic> json) {
     return Deck(
       id: (json['id'] ?? '') as String,

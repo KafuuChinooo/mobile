@@ -34,9 +34,11 @@ class UserProfileService {
   );
   */
 
+  // Trỏ document người dùng theo uid
   DocumentReference<Map<String, dynamic>> _userDoc(String uid) =>
       _firestore.collection('users').doc(uid);
 
+  // Lấy hồ sơ user hiện tại từ Firestore
   Future<UserProfile?> fetchCurrentProfile() async {
     final user = _auth.currentUser;
     if (user == null) return null;
@@ -57,6 +59,7 @@ class UserProfileService {
     );
   }
 
+  // Tạo hồ sơ user mới hoặc cập nhật
   Future<void> createUserProfile({
     required String uid,
     required String displayName,
@@ -71,6 +74,7 @@ class UserProfileService {
     }, SetOptions(merge: true));
   }
 
+  // Cập nhật display name và lưu Firestore
   Future<void> updateDisplayName(String newName) async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -84,6 +88,7 @@ class UserProfileService {
     }, SetOptions(merge: true));
   }
 
+  // Cập nhật ảnh đại diện và đồng bộ
   Future<void> updatePhotoUrl(String url) async {
     final user = _auth.currentUser;
     if (user == null) {

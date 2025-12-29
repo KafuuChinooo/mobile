@@ -12,6 +12,7 @@ class AiDistractorService implements DistractorProvider {
 
   final http.Client _client;
 
+  // Sinh 3 đáp án nhiễu cho một thẻ
   Future<List<String>> generate({
     required String term,
     required String answer,
@@ -38,6 +39,7 @@ class AiDistractorService implements DistractorProvider {
   }
 
   @override
+  // Sinh batch nhiễu cho nhiều thẻ, có fallback
   Future<Map<String, List<String>>> generateBatch(
     List<DeckCard> cards, {
     List<DeckCard>? deckContext,
@@ -89,16 +91,19 @@ class AiDistractorService implements DistractorProvider {
     }
   }
 
+  // Đóng client HTTP khi xong
   void dispose() {
     _client.close();
   }
 
+  // So sánh hai chuỗi gần giống nhau
   bool _equalsOrContains(String a, String b) {
     final la = a.toLowerCase();
     final lb = b.toLowerCase();
     return la == lb || la.contains(lb) || lb.contains(la);
   }
 
+  // Gọi API AI và lọc distractor hợp lệ
   Future<Map<String, List<String>>> _requestAndParse({
     required List<Map<String, String>> items,
     required List<DeckCard> cards,
@@ -190,6 +195,7 @@ class AiDistractorService implements DistractorProvider {
     return map;
   }
 
+  // Tạo prompt JSON cho mô hình sinh distractor
   String _buildPrompt(
     List<Map<String, String>> items, {
     required List<DeckCard> fullDeck,
@@ -244,6 +250,7 @@ Items needing distractors: ${jsonEncode(items)}
 ''';
   }
 
+  // Sinh đáp án nhiễu thủ công từ bộ thẻ
   Map<String, List<String>> _fallbackDistractors(List<DeckCard> cards) {
     // Simple non-AI fallback: use other card definitions as distractors.
     final map = <String, List<String>>{};
@@ -278,6 +285,7 @@ Items needing distractors: ${jsonEncode(items)}
     return map;
   }
 
+  // Cố gắng parse JSON lộn xộn từ AI
   Map<String, dynamic> _parseJsonBlock(String rawText) {
     // Try fenced code block first
     final fenced = RegExp(r'```(?:json)?\s*([\s\S]*?)```', multiLine: true);

@@ -1,3 +1,4 @@
+// Chuẩn hóa chuỗi, bỏ dấu tiếng Việt
 String normalizeText(String input) {
   const accentMap = <String, String>{
     // a

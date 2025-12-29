@@ -12,6 +12,7 @@ class AppRouter {
   static const String signUp = '/signUp';
   static const String welcome = '/welcome';
 
+  // Tạo route theo tên, fallback màn not found
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case login:
@@ -36,6 +37,7 @@ class AppRouter {
     );
   }
 
+  // Map tên route sang tab tương ứng
   static BottomNavItem? _navItemForRoute(String? routeName) {
     switch (routeName) {
       case home:
@@ -56,6 +58,7 @@ class NotFoundScreen extends StatelessWidget {
   const NotFoundScreen({super.key, this.route});
 
   @override
+  // Dựng màn báo route không tồn tại
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(

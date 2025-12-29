@@ -13,6 +13,7 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   bool _loading = false;
 
+  // Lưu đã xem welcome, điều hướng đúng screen
   Future<void> _completeOnboarding() async {
     setState(() => _loading = true);
     final prefs = await SharedPreferences.getInstance();
@@ -25,6 +26,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   @override
+  // Dựng giao diện màn welcome với nút bắt đầu
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

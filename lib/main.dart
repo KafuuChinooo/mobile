@@ -6,6 +6,7 @@ import 'package:flash_card/helper/router.dart';
 import 'package:flash_card/firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// Khởi động app, chọn route đầu theo trạng thái
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -28,6 +29,7 @@ class FlashcardApp extends StatelessWidget {
   const FlashcardApp({super.key, required this.initialRoute});
 
   @override
+  // Xây dựng MaterialApp với theme động theo route đầu
   Widget build(BuildContext context) {
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) => MaterialApp(

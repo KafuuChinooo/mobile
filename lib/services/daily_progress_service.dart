@@ -50,10 +50,12 @@ class DailyProgressService {
     databaseId: 'flashcard',
   );
 
+  // Trả collection log daily của user
   CollectionReference<Map<String, dynamic>> _logsCollection(String uid) {
     return _firestore.collection('users').doc(uid).collection('daily_logs');
   }
 
+  // Lấy tiến độ streak tuần hiện tại
   Future<DailyProgressSnapshot> fetchProgress() async {
     final user = _auth.currentUser;
     if (user == null) return const DailyProgressSnapshot.empty();
@@ -100,6 +102,7 @@ class DailyProgressService {
     );
   }
 
+  // Đánh dấu hôm nay đã hoạt động
   Future<DailyProgressSnapshot> markTodayActive() async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -122,19 +125,23 @@ class DailyProgressService {
     return fetchProgress();
   }
 
+  // Cắt thời gian, chỉ lấy ngày
   DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
 
+  // Sinh khóa yyyy-mm-dd cho ngày
   String _keyForDate(DateTime date) {
     final mm = date.month.toString().padLeft(2, '0');
     final dd = date.day.toString().padLeft(2, '0');
     return '${date.year}-$mm-$dd';
   }
 
+  // Lấy ngày chủ nhật đầu tuần
   DateTime _startOfWeek(DateTime date) {
     final daysFromSunday = date.weekday % 7;
     return _dateOnly(date.subtract(Duration(days: daysFromSunday)));
   }
 
+  // Tính streak liên tiếp tính đến hôm nay
   int _computeCurrentStreak(DateTime today, List<DateTime> dates) {
     final keys = dates.map(_keyForDate).toSet();
     var streak = 0;
@@ -147,6 +154,7 @@ class DailyProgressService {
     return streak;
   }
 
+  // Tính streak dài nhất trong danh sách
   int _computeLongestStreak(List<DateTime> dates) {
     if (dates.isEmpty) return 0;
     final unique = dates.map(_keyForDate).toSet().toList();
