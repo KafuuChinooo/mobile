@@ -729,23 +729,24 @@ class _OverviewCard extends StatelessWidget {
         border: Border.all(color: color.withOpacity(0.4)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label,
+            textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.black.withOpacity(0.65),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              color: Colors.black.withOpacity(0.8),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             value,
             style: TextStyle(
               color: color,
               fontSize: 26,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],

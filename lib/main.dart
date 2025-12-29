@@ -1,5 +1,5 @@
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flash_card/services/auth_service.dart';
+import 'package:flash_card/services/signin_signup.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flash_card/helper/router.dart';
