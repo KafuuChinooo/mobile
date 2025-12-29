@@ -31,7 +31,7 @@ Strict rules:
 - Treat "term" as the full prompt/question as given; do not change or answer it.
 - Language: match the language of the term/answer.
 - Safety: never reveal the exact answer text or spell it out.
-- Brevity: exactly one short sentence.
+- Brevity: exactly one short sentence which can be 20 words long.
 - Format: respond with JSON only, no markdown fences, no leading/trailing text.
 JSON example (structure to follow):
 {"hint":"Short, indirect hint goes here"}
