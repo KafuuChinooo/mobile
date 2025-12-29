@@ -1,26 +1,34 @@
 <img src="https://github.com/user-attachments/assets/49e2a8b3-79db-4609-a178-cc5ab8d6b977" alt="Logo" width="200"/>
 
-# Memzy
+# Memzy (Flash Card)
+Ứng dụng flashcard hỗ trợ học tập, đăng nhập Firebase, sinh đáp án nhiễu/hint bằng AI.
 
+## Yêu cầu
+- Flutter SDK (Dart >= `3.9.2`, kênh stable)
+- Có sẵn Firebase project: tải `google-services.json` vào `android/app/`
+- Khóa API Gemini: điền vào `lib/services/ai_distractor_service.dart` và `lib/services/hint_service.dart` nếu cần
 
-## Setup
-### Requirements
-- Flutter SDK >= `v3.35`
-- Browser (Chromium-based recommended)
-- Windows (for Windows build)
+## Cài đặt
+1) Kiểm tra môi trường: `flutter doctor`
+2) Cài dependency:  
+   ```bash
+   flutter pub get
+   ```
+3) (Tuỳ chọn) Cấu hình lại Firebase nếu thay project:  
+   ```bash
+   flutterfire configure
+   ```
 
-### Installation
-1. (Optional) Before running, run `flutter doctor` to ensure there are no issues
-2. Run the following commands
-```bash
-git clone https://github.com/architxkumar/flashcard/
-cd flashcard
-flutter pub get
-flutter run
-```
-After this, select the platform you would like to run on.
+## Chạy ứng dụng
+- Thiết bị thật/giả lập: `flutter run -d <device_id>`
+- Web (nếu bật): `flutter run -d chrome`
 
-## License
+## Thư mục chính
+- `lib/` mã nguồn Flutter
+- `images/` assets giao diện
+- `firebase_options.dart` cấu hình Firebase do FlutterFire sinh
+
+## Giấy phép
 [MIT LICENSE](./LICENSE)
 
 
