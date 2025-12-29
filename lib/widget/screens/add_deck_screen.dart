@@ -1,6 +1,7 @@
 import 'package:flash_card/data/deck_repository.dart';
 import 'package:flash_card/model/deck.dart';
 import 'package:flash_card/widget/app_scaffold.dart';
+import 'package:flash_card/widget/screens/ai_vocab_screen.dart';
 import 'package:flutter/material.dart';
 
 // Screen for both creating and editing a deck.
@@ -92,6 +93,19 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
     });
   }
 
+  void _importAiCards(List<AiVocabEntry> entries) {
+    for (final card in _cards) {
+      card.dispose();
+    }
+    _cards.clear();
+    setState(() {
+      for (final entry in entries) {
+        _cards.add(_CardFields(word: entry.term, answer: entry.definition));
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
   Future<void> _saveDeck() async {
     if (_saving) return;
     final isValid = _formKey.currentState?.validate() ?? false;
@@ -159,6 +173,17 @@ class _AddDeckScreenState extends State<AddDeckScreen> {
       showBackButton: true,
       showBottomNav: false,
       actions: [
+        IconButton(
+          icon: const Icon(Icons.auto_fix_high, color: Colors.black),
+          onPressed: () async {
+            final result = await Navigator.of(context).push<List<AiVocabEntry>>(
+              MaterialPageRoute(builder: (_) => const AiVocabScreen()),
+            );
+            if (result != null && result.isNotEmpty) {
+              _importAiCards(result);
+            }
+          },
+        ),
         IconButton(
           icon: const Icon(Icons.check, color: Colors.black),
           onPressed: _saveDeck,
