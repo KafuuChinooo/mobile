@@ -27,7 +27,7 @@ class AiVocabScreen extends StatefulWidget {
 class _AiVocabScreenState extends State<AiVocabScreen> {
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _countController = TextEditingController(text: '10');
-  final TextEditingController _languageController = TextEditingController(text: 'English');
+  final TextEditingController _languageController = TextEditingController(text: 'Vietnamese');
   bool _loading = false;
   List<AiVocabEntry> _results = [];
   static const String _apiKey = 'AIzaSyBIsETq9CTNcM6wSMHuLujvAgCQblWR_A0';
@@ -52,9 +52,11 @@ class _AiVocabScreenState extends State<AiVocabScreen> {
       return;
     }
     final wordCount = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
-    if (wordCount < 50) {
+    final charCount = text.replaceAll(RegExp(r'\s+'), '').runes.length;
+    final effectiveCount = wordCount >= 50 ? wordCount : charCount;
+    if (effectiveCount < 50) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Content must have at least 50 words')),
+        const SnackBar(content: Text('Content must have at least ~50 words/characters')),
       );
       return;
     }
@@ -196,7 +198,7 @@ $text
                     controller: _languageController,
                     decoration: const InputDecoration(
                       labelText: 'Target language',
-                      hintText: 'e.g., English, Vietnamese',
+                      hintText: 'e.g., Vietnamese, English, Japanese',
                       border: OutlineInputBorder(),
                     ),
                   ),
