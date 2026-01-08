@@ -1,4 +1,4 @@
-<img src="https://github.com/user-attachments/assets/49e2a8b3-79db-4609-a178-cc5ab8d6b977" alt="Logo" width="200"/>
+<img src="https://drive.google.com/file/d/179ooMjmfAtE-3mN5tQdcehsobaUfc2n7/view?usp=sharing" alt="Logo" width="200"/>
 
 # Memzy (Flash Card)
 Ứng dụng flashcard hỗ trợ học tập, đăng nhập Firebase, sinh đáp án nhiễu/hint bằng AI.
