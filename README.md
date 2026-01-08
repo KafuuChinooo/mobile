@@ -1,4 +1,4 @@
-<img width="500" height="500" alt="Logo" src="https://github.com/user-attachments/assets/620e174a-1679-4d9e-88ca-903bbb9212cb" />
+<img width="200" height="200" alt="Logo" src="https://github.com/user-attachments/assets/620e174a-1679-4d9e-88ca-903bbb9212cb" />
 
 # Memzy (Flash Card)
 An AI-powered flashcard app designed to support learning and long-term memory retention.
