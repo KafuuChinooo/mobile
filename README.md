@@ -3,6 +3,18 @@
 # Memzy (Flash Card)
 An AI-powered flashcard app designed to support learning and long-term memory retention.
 
+## Team members
+1) Phan Công Anh - Leader, App developer.
+   - Decided on app features.
+   - Lead development of core functionalities: card creation, deck creation, AI-powered. deck generation, and AI-based testing.
+3) Trần Quyết Duy - App developer.
+   - Developed personal account management, testing features, and home page.
+5) Lê Nữ Trà Mi - Business Analyst and project manager.
+   - Supported project planning and task tracking.
+   - Built basic workflows, user stories, and use cases; coordinated team updates.
+7) Dương Hồ Chính Tâm - UI/UX Designer, Presentor.
+   - User research, competitors analysis.
+   - Design wireframes and present project.
 ## Features
 - Create flashcard decks.
 - Study decks with flip-style flashcards.
